@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "bradlc.vscode-tailwindcss",
+    "christian-kohler.npm-intellisense",
+    "christian-kohler.path-intellisense",
+    "dbaeumer.vscode-eslint",
+    "dsznajder.es7-react-js-snippets",
+    "esbenp.prettier-vscode",
+    "formulahendry.auto-rename-tag",
+    "leizongmin.node-module-intellisense",
+    "mikestead.dotenv",
+    "usernamehw.errorlens",
+    "wix.vscode-import-cost"
+  ]
+}
