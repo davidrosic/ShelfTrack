@@ -146,6 +146,26 @@ export const readLimiter = rateLimit({
 });
 
 /**
+ * External search rate limiter
+ * Stricter limits since it hits external API (Open Library)
+ * Applies to: GET /api/books/search-universal with source=external
+ */
+export const externalSearchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 external searches per minute (OL API is rate limited)
+  skip: shouldSkip,
+  keyGenerator: generateKey, // Per-user limiting
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: "RateLimitError",
+      message: "External search rate limit exceeded. Please slow down.",
+    });
+  },
+});
+
+/**
  * Health check should NOT have rate limiting
  * Monitoring systems need consistent access
  */

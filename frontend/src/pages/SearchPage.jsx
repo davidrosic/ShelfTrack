@@ -4,8 +4,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { SearchIcon } from '../components/Icons'
-
-const OL_SEARCH = 'https://openlibrary.org/search.json'
+import { API_URL } from '../config'
 
 const CATEGORIES = [
   'All',
@@ -33,25 +32,35 @@ const SearchPage = () => {
   const [inputValue, setInputValue] = useState(q)
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
+  
+  // Pagination state for external search
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [searchSource, setSearchSource] = useState('auto') // 'auto' | 'local' | 'external'
 
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedRating, setSelectedRating] = useState('All')
   const [authorTags, setAuthorTags] = useState([])
   const [authorInput, setAuthorInput] = useState('')
 
+  // Initial search - uses auto source (local first, then external)
   useEffect(() => {
     if (!q.trim()) {
       setBooks([])
+      setOffset(0)
+      setHasMore(false)
       return
     }
 
     let cancelled = false
     setLoading(true)
     setError(null)
+    setOffset(0)
 
     const subject = CATEGORY_SUBJECTS[selectedCategory]
-    const url = `${OL_SEARCH}?q=${encodeURIComponent(q)}&limit=50&fields=key,title,author_name,first_publish_year,cover_i${subject ? `&subject=${subject}` : ''}`
+    const url = `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=48&source=${searchSource}${subject ? `&subject=${subject}` : ''}`
 
     fetch(url)
       .then(r => {
@@ -61,20 +70,20 @@ const SearchPage = () => {
       .then(data => {
         if (!cancelled) {
           setBooks(
-            (data.docs || []).map(doc => {
-              const olId = doc.key.split('/').pop()
-              return {
-                id: olId,
-                title: doc.title || 'Unknown Title',
-                author: doc.author_name?.[0] || 'Unknown Author',
-                coverUrl: doc.cover_i
-                  ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
-                  : null,
-                firstPublishYear: doc.first_publish_year || null,
-                rating: null,
-              }
-            })
+            (data.books || []).map(book => ({
+              id: book.open_library_id || book.book_id,
+              bookId: book.book_id, // Local ID if exists
+              openLibraryId: book.open_library_id,
+              title: book.title || 'Unknown Title',
+              author: book.author || 'Unknown Author',
+              coverUrl: book.cover_url,
+              firstPublishYear: book.first_publish_year || null,
+              rating: null,
+              source: book.source,
+            }))
           )
+          setHasMore(data.hasMore)
+          setOffset(data.books?.length || 0)
         }
       })
       .catch(err => {
@@ -87,7 +96,7 @@ const SearchPage = () => {
     return () => {
       cancelled = true
     }
-  }, [q, selectedCategory])
+  }, [q, selectedCategory, searchSource])
 
   const handleSearch = e => {
     e.preventDefault()
@@ -123,6 +132,43 @@ const SearchPage = () => {
     navigate(`/bookdetail/${book.id}`, { state: { book } })
   }
 
+  // Load more results from external source
+  const handleLoadMore = async () => {
+    if (loadingMore) return
+    
+    setLoadingMore(true)
+    setError(null)
+
+    const subject = CATEGORY_SUBJECTS[selectedCategory]
+    const url = `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=24&source=external&offset=${offset}${subject ? `&subject=${subject}` : ''}`
+
+    try {
+      const r = await fetch(url)
+      if (!r.ok) throw new Error('Failed to load more')
+      const data = await r.json()
+      
+      const newBooks = (data.books || []).map(book => ({
+        id: book.open_library_id || book.book_id,
+        bookId: book.book_id,
+        openLibraryId: book.open_library_id,
+        title: book.title || 'Unknown Title',
+        author: book.author || 'Unknown Author',
+        coverUrl: book.cover_url,
+        firstPublishYear: book.first_publish_year || null,
+        rating: null,
+        source: book.source,
+      }))
+
+      setBooks(prev => [...prev, ...newBooks])
+      setHasMore(data.hasMore)
+      setOffset(prev => prev + newBooks.length)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <div className="flex px-6 lg:px-12 py-8 gap-8">
@@ -142,6 +188,34 @@ const SearchPage = () => {
           </div>
 
           <div className="space-y-5">
+            {/* Search Source */}
+            <div>
+              <div
+                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+                style={{ backgroundColor: '#8B7355' }}
+              >
+                Search Source
+              </div>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
+                {[
+                  { value: 'auto', label: 'Auto (Local + External)' },
+                  { value: 'local', label: 'Local Only' },
+                  { value: 'external', label: 'Open Library Only' },
+                ].map(option => (
+                  <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="source"
+                      checked={searchSource === option.value}
+                      onChange={() => setSearchSource(option.value)}
+                      className="w-3.5 h-3.5 accent-amber-700"
+                    />
+                    <span className="text-xs text-gray-600">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Author */}
             <div>
               <div
@@ -294,6 +368,27 @@ const SearchPage = () => {
               {visibleBooks.map(book => (
                 <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
               ))}
+            </div>
+          )}
+
+          {/* Load more button */}
+          {!loading && !error && q && visibleBooks.length > 0 && hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-6 py-3 rounded-full text-sm font-medium transition-all hover:brightness-110 disabled:opacity-60"
+                style={{ backgroundColor: '#F5E6D3', color: '#5C4E35' }}
+              >
+                {loadingMore ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#8B7355', borderTopColor: 'transparent' }} />
+                    Loading...
+                  </span>
+                ) : (
+                  'Load more from Open Library'
+                )}
+              </button>
             </div>
           )}
         </main>

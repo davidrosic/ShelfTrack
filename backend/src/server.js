@@ -49,6 +49,7 @@ import {
   searchLimiter,
   readLimiter,
   writeLimiter,
+  externalSearchLimiter,
 } from "./middleware/rateLimit.js";
 
 // Load environment variables
@@ -170,6 +171,8 @@ app.use("/api/users", userRoutes);
 
 // Book routes - search is expensive (ILIKE with wildcards)
 app.use("/api/books/search", searchLimiter);
+// External search hits Open Library API - stricter limits
+app.use("/api/books/search-universal", externalSearchLimiter);
 app.use("/api/books", bookRoutes);
 
 // User book routes - all require auth, writeLimiter handles per-user limits
