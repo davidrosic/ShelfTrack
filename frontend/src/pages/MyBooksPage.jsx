@@ -46,7 +46,10 @@ const MyBooksPage = () => {
           read: data.stats.read,
         })
       })
-      .catch(() => {}) // non-critical, don't show error for stats
+      .catch(err => {
+        // non-critical, don't show UI error for stats, but log for debugging
+        console.error('[MyBooks] Failed to load stats:', err)
+      })
   }, [accessToken])
 
   const loadShelf = useCallback(() => {

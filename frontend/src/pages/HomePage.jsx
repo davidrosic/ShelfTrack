@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { ChevronRight } from '../components/Icons'
-import { API_URL } from '../config'
+import { apiFetch } from '../utils/apiFetch'
 
 const categories = [
   { name: 'Romance', count: 5, color: '#F5E6D3' },
@@ -32,8 +32,7 @@ const HomePage = () => {
 
   useEffect(() => {
     // Fetch books from the DB using a broad query, then pick random ones client-side
-    fetch(`${API_URL}/api/books/search?q=e&limit=100`)
-      .then(r => r.json())
+    apiFetch('/api/books/search?q=e&limit=100')
       .then(data => {
         const mapped = (data.books || []).map(b => ({
           id: b.open_library_id || String(b.book_id),
@@ -47,7 +46,9 @@ const HomePage = () => {
         }))
         setBooks(pickRandom(mapped, 8))
       })
-      .catch(() => {})
+      .catch(err => {
+        console.error('[HomePage] Failed to load books:', err)
+      })
   }, [])
 
   const handleBookClick = book => {
