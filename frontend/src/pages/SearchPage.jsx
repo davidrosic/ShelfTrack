@@ -95,7 +95,7 @@ const SearchPage = () => {
     return () => {
       cancelled = true
     }
-  }, [q, selectedCategory, searchSource])
+  }, [q, selectedCategory, searchSource, accessToken])
 
   const handleSearch = e => {
     e.preventDefault()
