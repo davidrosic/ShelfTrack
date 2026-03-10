@@ -19,6 +19,7 @@ const SignUpPage = () => {
     agreeTerms: false,
   })
   const [error, setError] = useState(null)
+  const [fieldErrors, setFieldErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
@@ -31,6 +32,7 @@ const SignUpPage = () => {
       return
     }
     setError(null)
+    setFieldErrors({})
     setLoading(true)
     try {
       await apiFetch('/api/users/register', {
@@ -47,7 +49,13 @@ const SignUpPage = () => {
       await login(formData.email, formData.password)
       navigate('/')
     } catch (err) {
-      setError(err.message || 'Registration failed')
+      // Check if it's a validation error with field details
+      if (err.errors) {
+        setFieldErrors(err.errors)
+        setError('Please fix the errors below')
+      } else {
+        setError(err.message || 'Registration failed')
+      }
     } finally {
       setLoading(false)
     }
@@ -81,20 +89,26 @@ const SignUpPage = () => {
                   <input
                     type="text"
                     placeholder="First name"
-                    className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
-                    style={{ backgroundColor: 'transparent', borderColor: '#3a3a3a' }}
+                    className={`w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors ${fieldErrors.firstName ? 'border-red-500' : ''}`}
+                    style={{ backgroundColor: 'transparent', borderColor: fieldErrors.firstName ? '#ef4444' : '#3a3a3a' }}
                     {...field('firstName')}
                   />
+                  {fieldErrors.firstName && (
+                    <p className="mt-1 text-xs text-red-400">{fieldErrors.firstName.join(', ')}</p>
+                  )}
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm text-gray-300 mb-1.5">Last name</label>
                   <input
                     type="text"
                     placeholder="Last name"
-                    className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
-                    style={{ backgroundColor: 'transparent', borderColor: '#3a3a3a' }}
+                    className={`w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors ${fieldErrors.lastName ? 'border-red-500' : ''}`}
+                    style={{ backgroundColor: 'transparent', borderColor: fieldErrors.lastName ? '#ef4444' : '#3a3a3a' }}
                     {...field('lastName')}
                   />
+                  {fieldErrors.lastName && (
+                    <p className="mt-1 text-xs text-red-400">{fieldErrors.lastName.join(', ')}</p>
+                  )}
                 </div>
               </div>
               <div>
@@ -102,30 +116,39 @@ const SignUpPage = () => {
                 <input
                   type="text"
                   placeholder="Choose a username"
-                  className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
-                  style={{ backgroundColor: 'transparent', borderColor: '#3a3a3a' }}
+                  className={`w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors ${fieldErrors.username ? 'border-red-500' : ''}`}
+                  style={{ backgroundColor: 'transparent', borderColor: fieldErrors.username ? '#ef4444' : '#3a3a3a' }}
                   {...field('username')}
                 />
+                {fieldErrors.username && (
+                  <p className="mt-1 text-xs text-red-400">{fieldErrors.username.join(', ')}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-gray-300 mb-1.5">Email address</label>
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
-                  style={{ backgroundColor: 'transparent', borderColor: '#3a3a3a' }}
+                  className={`w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors ${fieldErrors.email ? 'border-red-500' : ''}`}
+                  style={{ backgroundColor: 'transparent', borderColor: fieldErrors.email ? '#ef4444' : '#3a3a3a' }}
                   {...field('email')}
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1 text-xs text-red-400">{fieldErrors.email.join(', ')}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-gray-300 mb-1.5">Password</label>
                 <input
                   type="password"
                   placeholder="Password (min 8 characters)"
-                  className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
-                  style={{ backgroundColor: 'transparent', borderColor: '#3a3a3a' }}
+                  className={`w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors ${fieldErrors.password ? 'border-red-500' : ''}`}
+                  style={{ backgroundColor: 'transparent', borderColor: fieldErrors.password ? '#ef4444' : '#3a3a3a' }}
                   {...field('password')}
                 />
+                {fieldErrors.password && (
+                  <p className="mt-1 text-xs text-red-400">{fieldErrors.password.join(', ')}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-gray-300 mb-1.5">Confirm password</label>
