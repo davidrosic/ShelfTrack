@@ -24,9 +24,9 @@ export function AuthProvider({ children }) {
       }
       const data = await res.json();
       setAccessToken(data.token);
-      // Schedule next silent refresh 60s before the 15-min access token expires
+      // Schedule next silent refresh 5 minutes before the 15-min access token expires
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = setTimeout(() => silentRefreshRef.current?.(), 14 * 60 * 1000);
+      refreshTimerRef.current = setTimeout(() => silentRefreshRef.current?.(), 10 * 60 * 1000);
       return data.token;
     } catch {
       setAccessToken(null);
@@ -55,7 +55,7 @@ export function AuthProvider({ children }) {
     setAccessToken(data.token);
     setUser(data.user);
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    refreshTimerRef.current = setTimeout(() => silentRefreshRef.current?.(), 14 * 60 * 1000);
+    refreshTimerRef.current = setTimeout(() => silentRefreshRef.current?.(), 10 * 60 * 1000);
   }, []);
 
   const logout = useCallback(async () => {
