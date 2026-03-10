@@ -68,20 +68,7 @@ const SearchPage = () => {
     apiFetch(path, {}, accessToken)
       .then(data => {
         if (cancelled) return
-        setBooks(
-          (data.books || []).map(book => ({
-            id: book.open_library_id || book.book_id,
-            bookId: book.book_id, // Local ID if exists
-            openLibraryId: book.open_library_id,
-            title: book.title || 'Unknown Title',
-            author: book.author || 'Unknown Author',
-            coverUrl: book.cover_url,
-            firstPublishYear: book.first_publish_year || null,
-            averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
-            ratingCount: parseInt(book.rating_count, 10) || 0,
-            source: book.source,
-          }))
-        )
+        setBooks((data.books || []).map(mapBookFromAPI))
         setHasMore(data.hasMore)
         setOffset(data.books?.length || 0)
       })
