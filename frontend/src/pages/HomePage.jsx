@@ -7,12 +7,7 @@ import { ChevronRight } from '../components/Icons'
 import { apiFetch } from '../utils/apiFetch'
 import { mapBookFromAPI, mapBookForNavigation, getBookUrlId } from '../utils/bookMapper'
 
-const categories = [
-  { name: 'Romance', count: 5, color: '#F5E6D3' },
-  { name: 'Fiction', count: 120, color: '#E8D5B7' },
-  { name: 'Business', count: 67, color: '#D4C4A8' },
-  { name: 'Health', count: 600, color: '#C4B896' },
-]
+const AUTHOR_COLORS = ['#F5E6D3', '#E8D5B7', '#D4C4A8', '#C4B896']
 
 // Pick `n` random items from an array
 const pickRandom = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0, n)
@@ -20,12 +15,22 @@ const pickRandom = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0,
 const HomePage = () => {
   const navigate = useNavigate()
   const [books, setBooks] = useState([])
+  const [authors, setAuthors] = useState([])
 
   useEffect(() => {
     // Fetch books from the DB using a broad query, then pick random ones client-side
     apiFetch('/api/books/search?q=e&limit=100')
       .then(data => {
-        setBooks(pickRandom((data.books || []).map(mapBookFromAPI), 8))
+        const allBooks = (data.books || []).map(mapBookFromAPI)
+        setBooks(pickRandom(allBooks, 8))
+
+        // Extract 4 random unique authors
+        const uniqueAuthors = [...new Map(
+          allBooks
+            .filter(b => b.author && b.author !== 'Unknown Author')
+            .map(b => [b.author, b])
+        ).values()]
+        setAuthors(pickRandom(uniqueAuthors, 4))
       })
       .catch(err => {
         console.error('[HomePage] Failed to load books:', err)
@@ -137,7 +142,7 @@ const HomePage = () => {
           </h2>
         </div>
         {books.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-4 justify-items-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-4">
             {books.map(book => (
               <BookCard
                 key={book.id}
@@ -158,27 +163,27 @@ const HomePage = () => {
         )}
       </section>
 
-      {/* ===== CATEGORIES ===== */}
+      {/* ===== AUTHORS ===== */}
       <section className="px-6 lg:px-12 py-16">
         <h2
           className="text-xl font-bold mb-8"
           style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
         >
-          Choose the category for your next trip
+          Discover Authors You Might Love
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {categories.map((cat, i) => (
+          {authors.map((author, i) => (
             <div
               key={i}
-              onClick={() => navigate(`/search?q=${cat.name}`)}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(author.author)}`)}
               className="p-6 rounded-xl cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
-              style={{ backgroundColor: cat.color }}
+              style={{ backgroundColor: AUTHOR_COLORS[i % AUTHOR_COLORS.length] }}
             >
               <h3 className="font-bold text-lg" style={{ color: '#1C1C1C' }}>
-                {cat.name}
+                {author.author}
               </h3>
               <p className="text-xs mt-1" style={{ color: '#5C4E35' }}>
-                {cat.count} Book reviewed
+                Explore their books
               </p>
             </div>
           ))}

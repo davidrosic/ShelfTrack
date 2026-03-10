@@ -62,7 +62,7 @@ export function mapBookForNavigation(book) {
 
   return {
     id: book.openLibraryId || String(book.bookId),
-    olId: book.openLibraryId,
+    openLibraryId: book.openLibraryId,
     title: book.title,
     author: book.author,
     coverUrl: book.coverUrl,

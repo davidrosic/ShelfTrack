@@ -1,21 +1,21 @@
-import { FacebookIcon, YouTubeIcon, TwitterIcon, LinkedInIcon } from "./Icons";
+import { FacebookIcon, YouTubeIcon, TwitterIcon, LinkedInIcon } from './Icons'
 
 const socialLinks = [
-  { label: "Facebook", Icon: FacebookIcon },
-  { label: "YouTube", Icon: YouTubeIcon },
-  { label: "Twitter", Icon: TwitterIcon },
-  { label: "LinkedIn", Icon: LinkedInIcon },
-];
+  { label: 'Facebook', Icon: FacebookIcon },
+  { label: 'YouTube', Icon: YouTubeIcon },
+  { label: 'Twitter', Icon: TwitterIcon },
+  { label: 'LinkedIn', Icon: LinkedInIcon },
+]
 
 const Footer = () => {
   return (
-    <footer style={{ backgroundColor: "#1C1C1C" }}>
+    <footer style={{ backgroundColor: '#1C1C1C' }}>
       <div className="px-6 lg:px-12 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
             <span className="text-lg font-bold text-white">
-              shelf<span style={{ color: "#D4A574" }}>Track</span>
+              shelf<span style={{ color: '#D4A574' }}>Track</span>
             </span>
           </div>
 
@@ -23,7 +23,15 @@ const Footer = () => {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Our Company</h4>
             <ul className="space-y-2">
-              {["About us", "Careers", "Terms", "Privacy", "Interest Based Ads", "Ad Preferences", "Help"].map((item) => (
+              {[
+                'About us',
+                'Careers',
+                'Terms',
+                'Privacy',
+                'Interest Based Ads',
+                'Ad Preferences',
+                'Help',
+              ].map(item => (
                 <li key={item}>
                   <button className="text-xs text-gray-400 hover:text-white transition-colors">
                     {item}
@@ -37,7 +45,7 @@ const Footer = () => {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Work with us</h4>
             <ul className="space-y-2">
-              {["Authors", "Advertise", "Authors & publishing", "API"].map((item) => (
+              {['Authors', 'Advertise', 'Authors & publishing', 'API'].map(item => (
                 <li key={item}>
                   <button className="text-xs text-gray-400 hover:text-white transition-colors">
                     {item}
@@ -58,7 +66,7 @@ const Footer = () => {
               />
               <button
                 className="px-4 py-2 rounded-r-lg text-white text-xs font-semibold transition-all hover:brightness-110"
-                style={{ backgroundColor: "#8B7355" }}
+                style={{ backgroundColor: '#8B7355' }}
               >
                 →
               </button>
@@ -87,7 +95,7 @@ const Footer = () => {
         </div>
       </div>
     </footer>
-  );
-};
+  )
+}
 
-export default Footer;
+export default Footer

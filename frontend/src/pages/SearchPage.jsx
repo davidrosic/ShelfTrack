@@ -47,6 +47,8 @@ const SearchPage = () => {
   const [selectedRating, setSelectedRating] = useState('All')
   const [authorTags, setAuthorTags] = useState([])
   const [authorInput, setAuthorInput] = useState('')
+  const [yearFrom, setYearFrom] = useState('')
+  const [yearTo, setYearTo] = useState('')
 
   // Initial search - uses auto source (local first, then external)
   useEffect(() => {
@@ -105,21 +107,19 @@ const SearchPage = () => {
     setSelectedCategory('All')
     setSelectedRating('All')
     setAuthorTags([])
+    setYearFrom('')
+    setYearTo('')
   }
 
   const visibleBooks = books.filter(book => {
-    // Author filter
-    if (authorTags.length > 0 && !authorTags.some(tag => 
-      book.author.toLowerCase().includes(tag.toLowerCase()))) {
-      return false
-    }
-    // Rating filter
+    if (authorTags.length > 0 && !authorTags.some(tag =>
+      book.author.toLowerCase().includes(tag.toLowerCase()))) return false
     if (selectedRating !== 'All') {
       const minRating = parseInt(selectedRating, 10)
-      if ((book.averageRating || 0) < minRating) {
-        return false
-      }
+      if ((book.averageRating || 0) < minRating) return false
     }
+    if (yearFrom && book.firstPublishYear && book.firstPublishYear < parseInt(yearFrom)) return false
+    if (yearTo && book.firstPublishYear && book.firstPublishYear > parseInt(yearTo)) return false
     return true
   })
 
@@ -235,6 +235,36 @@ const SearchPage = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Year published */}
+            <div>
+              <div
+                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+                style={{ backgroundColor: '#8B7355' }}
+              >
+                Year Published
+              </div>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 flex gap-2">
+                <input
+                  type="number"
+                  placeholder="From"
+                  value={yearFrom}
+                  onChange={e => setYearFrom(e.target.value)}
+                  className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+                  min="0"
+                  max="2100"
+                />
+                <input
+                  type="number"
+                  placeholder="To"
+                  value={yearTo}
+                  onChange={e => setYearTo(e.target.value)}
+                  className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+                  min="0"
+                  max="2100"
+                />
               </div>
             </div>
 
