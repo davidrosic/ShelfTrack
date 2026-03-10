@@ -78,7 +78,8 @@ const SearchPage = () => {
               author: book.author || 'Unknown Author',
               coverUrl: book.cover_url,
               firstPublishYear: book.first_publish_year || null,
-              rating: null,
+              averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
+              ratingCount: parseInt(book.rating_count, 10) || 0,
               source: book.source,
             }))
           )
@@ -155,7 +156,8 @@ const SearchPage = () => {
         author: book.author || 'Unknown Author',
         coverUrl: book.cover_url,
         firstPublishYear: book.first_publish_year || null,
-        rating: null,
+        averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
+        ratingCount: parseInt(book.rating_count, 10) || 0,
         source: book.source,
       }))
 

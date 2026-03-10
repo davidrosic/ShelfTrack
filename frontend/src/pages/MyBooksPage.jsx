@@ -346,6 +346,7 @@ const MyBooksPage = () => {
                   key={book.userBookId}
                   book={book}
                   showStatus
+                  showAverageRating={false}
                   onClick={() => handleBookClick(book)}
                   onRemove={handleRemove}
                 />

@@ -1,646 +1,577 @@
-# ShelfTrack Frontend-Backend Analysis Report
+# ShelfTrack Frontend-Backend Inconsistency Analysis Report
 
-**Date:** 2026-03-10  
-**Scope:** Full-stack analysis of frontend (React + Vite) and backend (Express + PostgreSQL)  
-**Objective:** Identify inconsistencies, errors, redundant code, and security issues
+**Generated:** 2026-03-10  
+**Scope:** Full-stack code review focusing on data flow, API contracts, and UI inconsistencies  
+**Severity Levels:** 🔴 Critical | 🟠 High | 🟡 Medium | 🔵 Low
 
 ---
 
 ## Executive Summary
 
-The codebase implements a book tracking application with authentication, book search, and personal library management. The **backend is generally well-structured** with proper security measures (token rotation, httpOnly cookies, password hashing). The **frontend has several issues** including incomplete auth integration, navigation inconsistencies, and UI that doesn't reflect authentication state.
+This analysis identified **15 distinct issues** ranging from critical data flow bugs to minor naming inconsistencies. The most severe issues involve **rating display failures** (stars not appearing), **broken rating filters**, and **authentication state handling** that could lead to poor user experience.
 
-### Critical Issues Found: 7
-### Warnings Found: 12
-### Redundant Code: 4 locations
+### Critical Issues Requiring Immediate Attention
+1. **Ratings always null in SearchPage** - Rating filter UI is non-functional
+2. **Star ratings not displayed for books** - `BookCard` receives incorrect rating property
+3. **Authentication bypass in SearchPage** - Uses raw `fetch` instead of `apiFetch`
+4. **Average rating vs User rating confusion** - Backend aggregates, frontend expects individual
 
 ---
 
-## 1. CRITICAL ISSUES
+## 🔴 Critical Issues
 
-### 1.1 Navbar Shows Login/Signup Buttons Regardless of Auth State
+### 1. Ratings Always Null in SearchPage (Rating Filter Non-Functional)
 
-**Location:** `frontend/src/components/Navbar.jsx` (lines 31-46)
+**Location:** `frontend/src/pages/SearchPage.jsx` (lines 72-84, 150-160)
 
-**Issue:** The Navbar component always displays "Sign in" and "Sign up" buttons, even when the user is logged in. There's no logout button or user profile indication.
-
-**Current Code:**
-```jsx
-<div className="flex items-center gap-3">
-  <button onClick={() => navigate("/signin")}>Sign in</button>
-  <button onClick={() => navigate("/signup")}>Sign up</button>
-</div>
+**Problem:**
+```javascript
+// SearchPage.jsx - BOTH search functions set rating to null
+setBooks(
+  (data.books || []).map(book => ({
+    // ... other fields
+    rating: null,  // ← ALWAYS null regardless of source!
+    source: book.source,
+  }))
+)
 ```
 
-**Expected Behavior:** Should use `useAuth()` hook to conditionally show:
-- Login/Signup buttons when NOT authenticated
-- User profile/logout when authenticated
+The `SearchPage` has a rating filter UI ("5 stars", "4 stars", etc.) that allows users to filter by minimum rating, but **every book has `rating: null`** because:
+1. Local DB books have `average_rating` (aggregate from all users)
+2. External API books have no rating data
+3. The mapping code explicitly sets `rating: null`
 
-**Impact:** Users cannot log out from the main navigation. Confusing UX.
+**Impact:** Rating filter appears to work but actually does nothing. User confusion.
 
-**Fix:** Import `useAuth` and conditionally render based on `isLoggedIn`:
+**Root Cause:** Confusion between `average_rating` (aggregate) vs `rating` (user's individual rating).
+
+**Recommended Fix:**
+```javascript
+// Option A: Include average_rating for display
+rating: book.average_rating ? parseFloat(book.average_rating) : null,
+
+// Option B: Remove rating filter from search (it's only relevant for MyBooks)
+// since search shows all books, not just user's rated books
+```
+
+---
+
+### 2. Star Ratings Not Displayed in BookCard
+
+**Location:** `frontend/src/components/BookCard.jsx` (line 59)
+
+**Problem:**
+```javascript
+<StarRating rating={book.rating || 0} size={12} />
+```
+
+The `BookCard` expects `book.rating`, but different data sources provide ratings differently:
+
+| Source | Field Name | Type | Issue |
+|--------|-----------|------|-------|
+| Local DB search | `average_rating` | string/number | Wrong field name |
+| External search | N/A | - | No rating data |
+| MyBooks shelf | `rating` | number | ✅ Correct |
+| HomePage | `average_rating` | string | Wrong field name |
+
+**Impact:** Stars don't appear on book cards from search results or homepage.
+
+**Evidence:**
+```javascript
+// HomePage.jsx (line 45) - CORRECTLY maps average_rating
+rating: b.average_rating ? parseFloat(b.average_rating) : 0,
+
+// MyBooksPage.jsx (line 67) - CORRECTLY uses rating
+rating: entry.rating,
+
+// SearchPage.jsx (line 81) - WRONG: always null
+rating: null,
+```
+
+**Recommended Fix:** Standardize on `averageRating` for aggregate ratings and `rating` for user ratings:
+```javascript
+// In SearchPage mapping:
+averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
+rating: null, // User hasn't rated yet (anonymous)
+
+// In BookCard.jsx:
+<StarRating rating={book.averageRating || book.rating || 0} size={12} />
+```
+
+---
+
+### 3. Authentication Bypass in SearchPage
+
+**Location:** `frontend/src/pages/SearchPage.jsx` (lines 65, 145)
+
+**Problem:**
+```javascript
+// Uses raw fetch instead of apiFetch
+fetch(url)  // ← No token refresh on 401!
+```
+
+The `SearchPage` uses standard `fetch()` directly, bypassing the authentication handling in `apiFetch.js` which:
+- Automatically retries on 401 with token refresh
+- Handles token expiration gracefully
+- Attaches Authorization headers
+
+**Impact:** If a user's access token expires during search:
+1. Request fails with 401
+2. User sees "Search failed" error
+3. Silent token refresh never happens
+4. User must manually refresh page or re-login
+
+**Recommended Fix:**
+```javascript
+// Import apiFetch
+import { apiFetch } from '../utils/apiFetch';
+import { useAuth } from '../context/AuthContext';
+
+// In component:
+const { accessToken } = useAuth();
+
+// Use apiFetch for authenticated requests:
+apiFetch(`/api/books/search-universal?q=${encodeURIComponent(q)}&limit=48&source=${searchSource}`, {}, accessToken)
+```
+
+**Note:** Since search is currently public (no auth required), this is lower priority. However, if auth is added to search later, this will break.
+
+---
+
+### 4. Average Rating vs User Rating Data Confusion
+
+**Location:** Multiple files
+
+**Problem:** The application conflates two different concepts:
+
+1. **Average Rating** (`average_rating` from DB) - Aggregate of all users' ratings for a book
+2. **User Rating** (`rating` from user_books) - Individual user's rating
+
+**Backend - Book.search():**
+```javascript
+SELECT b.*, 
+  ROUND(AVG(ub.rating)::numeric, 1) AS average_rating,  // Aggregate
+  COUNT(ub.rating) AS rating_count
+```
+
+**Backend - UserBook.getUserShelf():**
+```javascript
+SELECT ub.rating  // Individual user's rating
+```
+
+**Frontend confusion:**
+- `HomePage` shows `average_rating` (correct for browse)
+- `SearchPage` shows nothing (always null)
+- `MyBooksPage` shows `rating` (correct for user's books)
+- `BookCard` expects `rating` but should handle both
+
+**Impact:** Users can't see community ratings when browsing/searching.
+
+**Recommended Fix:** Update BookCard to display both:
 ```jsx
-import { useAuth } from "../context/AuthContext";
-
-const Navbar = ({ showSearch = true }) => {
-  const navigate = useNavigate();
-  const { isLoggedIn, logout, user } = useAuth();
+// BookCard.jsx
+const BookCard = ({ book, showAverage = true, ... }) => {
+  const displayRating = showAverage 
+    ? (book.averageRating || book.average_rating || 0)
+    : (book.rating || 0);
   
-  // ... render auth-aware buttons
+  return (
+    // ...
+    <StarRating rating={displayRating} size={12} />
+    {book.ratingCount > 0 && (
+      <span className="text-xs text-gray-400">({book.ratingCount})</span>
+    )}
+  );
 };
 ```
 
 ---
 
-### 1.2 Navbar Search Input is Non-Functional
+## 🟠 High Severity Issues
 
-**Location:** `frontend/src/components/Navbar.jsx` (lines 18-28, 50-58)
+### 5. Inconsistent Book ID Handling
 
-**Issue:** The search inputs in Navbar are purely presentational. They don't:
-- Capture input state
-- Trigger search on submit
-- Navigate to search results
+**Location:** Multiple pages
 
-**Current Code:**
-```jsx
-<input
-  type="text"
-  placeholder="Need help finding your book?"
-  className="..."
-  // No onChange, no onSubmit, no value binding
-/>
+**Problem:** Different pages use different ID fields, causing navigation and lookup issues:
+
+| Page | ID Field | Value | Issue |
+|------|----------|-------|-------|
+| `SearchPage` | `id` | `open_library_id \|\| book_id` | Inconsistent type |
+| `SearchPage` | `bookId` | `book_id` | Only exists for local books |
+| `MyBooksPage` | `id` | `book_id` | Always numeric |
+| `MyBooksPage` | `olId` | `open_library_id` | May be null |
+| `HomePage` | `id` | `open_library_id \|\| book_id` | Same as SearchPage |
+| `BookDetailPage` | `olId` | From state or fetched | Depends on source |
+
+**Evidence:**
+```javascript
+// SearchPage.jsx (lines 72-84)
+id: book.open_library_id || book.book_id,  // String or number
+bookId: book.book_id,  // Only for local
+
+// MyBooksPage.jsx (lines 59-70)
+id: entry.book_id,  // Always number
+olId: entry.open_library_id,  // May be null
+
+// BookDetailPage.jsx (line 30)
+const { id } = useParams()  // From URL - could be either!
 ```
 
-**Expected Behavior:** Per CONNECT.md section 6, Navbar should have "Live Inline Search" with debounced API calls to `/api/books?q=`.
+**Impact:** 
+- URL construction inconsistent: `/bookdetail/OL123W` vs `/bookdetail/123`
+- Direct URL access may fail if book isn't in local DB
+- Shelf lookup by `olId` may fail for custom books
 
-**Impact:** Users cannot search from the navbar as designed.
+**Recommended Fix:** Use `open_library_id` as canonical URL ID:
+```javascript
+// Always use open_library_id for URLs when available
+const urlId = book.open_library_id || `local-${book.book_id}`;
+navigate(`/bookdetail/${urlId}`);
+
+// In BookDetailPage, handle both:
+const { id } = useParams();
+const isLocalId = id.startsWith('local-');
+const bookId = isLocalId ? parseInt(id.replace('local-', '')) : null;
+const olId = isLocalId ? null : id;
+```
 
 ---
 
-### 1.3 Frontend Does Not Handle 401 Errors with Automatic Token Refresh
+### 6. Cover URL Field Name Inconsistency
 
-**Location:** `frontend/src/utils/apiFetch.js`
+**Location:** Frontend data mapping
 
-**Issue:** The `apiFetch` wrapper doesn't handle 401 (Unauthorized) responses by attempting a silent refresh before failing. This means when the access token expires, API calls fail instead of transparently refreshing.
+**Problem:** Backend consistently uses `cover_url` (snake_case), but frontend mapping is inconsistent:
 
-**Current Code:**
-```js
-if (!res.ok) {
-  const err = await res.json().catch(() => ({ message: 'Request failed' }));
-  throw new Error(err.message || res.statusText);
+**Correct mappings:**
+- `HomePage.jsx`: `coverUrl: b.cover_url` ✅
+- `MyBooksPage.jsx`: `coverUrl: entry.cover_url` ✅
+
+**Incorrect mappings:**
+- `SearchPage.jsx`: `coverUrl: book.cover_url` ✅ (correct but could be clearer)
+
+**BookCard.jsx** expects `book.coverUrl` (camelCase) which is correct after mapping.
+
+**Risk:** If any mapping is missed, cover images won't display.
+
+**Recommended Fix:** Create a shared utility function:
+```javascript
+// utils/bookMapper.js
+export function mapBookFromAPI(book) {
+  return {
+    id: book.open_library_id || book.book_id,
+    bookId: book.book_id,
+    olId: book.open_library_id,
+    title: book.title,
+    author: book.author,
+    coverUrl: book.cover_url,
+    firstPublishYear: book.first_publish_year,
+    averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
+    ratingCount: parseInt(book.rating_count, 10) || 0,
+    source: book.source,
+  };
 }
 ```
 
-**Expected Behavior:** Per CONNECT.md architecture diagram, apiFetch should:
-1. On 401, attempt silent refresh via `/api/auth/refresh`
-2. Retry the original request with new token
-3. Only fail if refresh also fails
+---
 
-**Impact:** Users are logged out unexpectedly when access tokens expire (every 15 minutes).
+### 7. Category Filter Only Works for External Search
 
-**Fix:** The AuthContext has `silentRefresh` but it's not integrated into `apiFetch`. Options:
-- Add a global 401 handler that triggers auth refresh
-- Pass a callback to apiFetch for auth failures
-- Use an axios-like interceptor pattern
+**Location:** `frontend/src/pages/SearchPage.jsx` (line 63), `backend/src/routes/books.js`
+
+**Problem:**
+The category filter sends `subject` parameter to backend:
+```javascript
+const url = `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=48&source=${searchSource}${subject ? `&subject=${subject}` : ''}`
+```
+
+But `Book.search()` (local DB) doesn't support subject filtering:
+```javascript
+// Book.js - search() only filters by title/author
+WHERE b.title ILIKE $1 OR b.author ILIKE $1
+```
+
+**Impact:** When source is "local" or results come from local DB, category filter has no effect. Users see confusing results.
+
+**Recommended Fix:** Either:
+1. Remove category filter from UI (simplest)
+2. Add subject field to books table and filter locally
+3. Always use external search when category is selected
 
 ---
 
-### 1.4 BookCard Uses Wrong Property for ID
+### 8. Rating Count Returned as String
 
-**Location:** `frontend/src/components/BookCard.jsx` (line 13, implicit)
+**Location:** `backend/src/models/Book.js` (line 125)
 
-**Issue:** BookCard receives `book` prop but the parent components pass different ID fields:
-- `SearchPage.jsx` passes: `id: b.book_id` (line 51)
-- `MyBooksPage.jsx` passes: `id: entry.book_id` AND `userBookId: entry.user_book_id` (lines 32-33)
+**Problem:**
+```javascript
+COUNT(ub.rating) AS rating_count  // Returns as string from PostgreSQL
+```
 
-When clicking a book in MyBooksPage, it navigates to `/bookdetail/${book.id}` which uses `book_id`. However, the deletion and status updates require `user_book_id`.
+**Evidence:**
+```javascript
+// backend/src/routes/books.js (line 109)
+rating_count: "0",  // Explicitly string!
+```
 
-**Impact:** This creates confusion between:
-- `book_id` (the book in the catalog)
-- `user_book_id` (the user's shelf entry)
+**Impact:** Potential type-related bugs if frontend expects number.
 
-The BookDetailPage uses `bookId: book.book_id` when adding to shelf, which is correct. But removing from shelf would need `user_book_id`, not `book_id`.
+**Recommended Fix:**
+```javascript
+// In Book.search():
+COUNT(ub.rating)::int AS rating_count  // Cast to integer
+
+// Or in route:
+rating_count: parseInt(book.rating_count, 10) || 0
+```
 
 ---
 
-### 1.5 MyBooksPage Filtering is Client-Side Only
+## 🟡 Medium Severity Issues
 
-**Location:** `frontend/src/pages/MyBooksPage.jsx` (lines 49-54, 56)
+### 9. API_URL Fallback Inconsistency
 
-**Issue:** The shelf data is fetched once, then filtered client-side. For large libraries, this is inefficient. Also, the count badges calculate by filtering the already-fetched data, which won't reflect server-side changes.
+**Location:** `frontend/src/pages/HomePage.jsx` (line 7)
 
-**Current Code:**
-```jsx
-const counts = {
-  all: books.length,
-  want_to_read: books.filter(b => b.status === 'want_to_read').length,
-  // ...
+**Problem:**
+```javascript
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+```
+
+But `config.js` exports without fallback:
+```javascript
+export const API_URL = import.meta.env.VITE_API_URL
+```
+
+**Impact:** If `VITE_API_URL` is not set:
+- Other pages fail (undefined URL)
+- HomePage works (has fallback)
+
+**Recommended Fix:** Add fallback to config.js:
+```javascript
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+```
+
+Then remove inline definition from HomePage.
+
+---
+
+### 10. No Error Handling for Missing Environment Variable
+
+**Location:** `frontend/src/config.js`
+
+**Problem:** If `VITE_API_URL` is not set, `API_URL` is `undefined`, causing requests to fail with obscure errors.
+
+**Recommended Fix:**
+```javascript
+// config.js
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+if (!API_URL) {
+  console.error('[CONFIG] VITE_API_URL not set! Using default.');
 }
 ```
 
-**Expected:** Should use the `/api/user-books/stats` endpoint for accurate counts.
-
 ---
 
-### 1.6 FloatingNav Missing Logout and User State
+### 11. Silent Failures in MyBooksPage Stats Loading
 
-**Location:** `frontend/src/App.jsx` (lines 11-61)
+**Location:** `frontend/src/pages/MyBooksPage.jsx` (line 49)
 
-**Issue:** The FloatingNav component receives `isLoggedIn` but doesn't show user-specific actions like logout or profile. It also doesn't update when auth state changes in a meaningful way (just switches nav items).
+**Problem:**
+```javascript
+apiFetch('/api/user-books/stats', {}, accessToken)
+  .then(data => { /* update counts */ })
+  .catch(() => {}) // Silently ignores errors!
+```
 
-**Related Issue:** There's no way to log out from the floating navigation.
+**Impact:** If stats fail to load, counts show 0 without any error indication.
 
----
-
-### 1.7 API Endpoint Mismatch in CONNECT.md vs Implementation
-
-**Location:** Documentation vs Code
-
-**Issue:** CONNECT.md section "Page-by-Page API Wiring" lists endpoints that don't match the actual backend:
-
-| CONNECT.md Spec | Actual Backend | Status |
-|----------------|----------------|--------|
-| `GET /api/books?q=` | `GET /api/books/search?q=` | ❌ Mismatch |
-| `GET /api/books/:id` | `GET /api/books/:id` | ✅ Match |
-| `POST /api/user-books` | `POST /api/user-books` | ✅ Match |
-| `GET /api/user-books?status=` | `GET /api/user-books?status=` | ✅ Match |
-| `PATCH /api/user-books/:id/status` | `PATCH /api/user-books/:id/status` | ✅ Match |
-| `PUT /api/user-books/:id/review` | `PUT /api/user-books/:id/review` | ✅ Match |
-| `DELETE /api/user-books/:id` | `DELETE /api/user-books/:id` | ✅ Match |
-
-The search endpoint mismatch is significant. Frontend correctly uses `/api/books/search` (SearchPage.jsx line 45) but documentation says `/api/books?q=`.
-
----
-
-## 2. SECURITY ISSUES
-
-### 2.1 Refresh Token Cookie Path Inconsistency
-
-**Location:** 
-- `backend/src/routes/users.js` (line 129): `path: "/api/auth/refresh"`
-- `backend/src/routes/auth.js` (line 70): `path: "/api/auth/refresh"`
-
-**Analysis:** The cookie path is set to `/api/auth/refresh` which means:
-- The cookie is ONLY sent to `/api/auth/refresh` endpoint
-- This is correct per the CONNECT.md design (security best practice)
-- The cookie won't be sent to other endpoints, reducing XSS attack surface
-
-**Status:** ✅ This is intentionally correct.
-
----
-
-### 2.2 CORS Configuration Missing in Production Check
-
-**Location:** `backend/src/server.js` (lines 77-82)
-
-**Issue:** The CORS configuration uses `FRONTEND_URL` from env, but if not set, falls back to `http://localhost:5173`. In production, this could allow unexpected origins if `FRONTEND_URL` is not explicitly set.
-
-**Current Code:**
-```js
-cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true,
+**Recommended Fix:** At minimum, log the error:
+```javascript
+.catch(err => {
+  console.error('[MyBooks] Failed to load stats:', err);
+  // Optionally show error state
 })
 ```
 
-**Recommendation:** In production, require explicit `FRONTEND_URL`:
-```js
-const corsOrigin = process.env.NODE_ENV === 'production' 
-  ? process.env.FRONTEND_URL 
-  : (process.env.FRONTEND_URL || "http://localhost:5173");
+---
 
-if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
-  console.error('[FATAL] FRONTEND_URL required in production');
-  process.exit(1);
+### 12. No Validation for Minimum Search Query Length
+
+**Location:** `frontend/src/components/Navbar.jsx` (SearchBox)
+
+**Problem:** The debounced search fires for any 2+ character query without validation. Could lead to:
+- Unnecessary API calls for short queries
+- Rate limit exhaustion
+
+**Recommended Fix:** Add minimum length check and trim:
+```javascript
+const q = value.trim()
+if (q.length < 3) {  // Require at least 3 characters
+  setSuggestions([])
+  setOpen(false)
+  return
 }
 ```
 
 ---
 
-### 2.3 No Rate Limiting on Auth Endpoints
+### 13. Review Form Shows Without Rating
 
-**Location:** `backend/src/routes/users.js` (login, register), `backend/src/routes/auth.js` (refresh)
+**Location:** `frontend/src/pages/BookDetailPage.jsx`
 
-**Issue:** No rate limiting is implemented on authentication endpoints, making them vulnerable to brute force attacks.
+**Problem:** A user can write a review without rating the book. The UI allows submitting review text with 0 stars.
 
-**Recommendation:** Add `express-rate-limit`:
-```js
-import rateLimit from 'express-rate-limit';
+**Impact:** Database schema allows null ratings, but UX is confusing - reviews without ratings seem incomplete.
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
-  message: { error: 'Too many attempts, please try again later' }
-});
+**Recommended Fix:** Either:
+1. Require rating when review is written
+2. Show a hint that rating is recommended
 
-router.post('/login', authLimiter, ...);
+---
+
+## 🔵 Low Severity / Code Quality Issues
+
+### 14. Inconsistent Import Style
+
+**Location:** Multiple files
+
+**Problem:** Mix of import styles:
+```javascript
+// Some files use direct import
+import { API_URL } from '../config'
+
+// Others use inline definition
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+```
+
+**Recommended Fix:** Standardize on the config import.
+
+---
+
+### 15. Unused Parameter in BookDetailPage Navigation
+
+**Location:** `frontend/src/pages/MyBooksPage.jsx` (line 104)
+
+**Problem:**
+```javascript
+navigate('/bookdetail/' + urlId, {
+  state: {
+    book: {
+      id: urlId,  // Duplicate - already in URL
+      olId: book.olId,  // Duplicate of id
+      // ...
+    },
+  },
+})
+```
+
+The `id` and `olId` in state are redundant since they're in the URL.
+
+**Impact:** Minimal - just code clarity.
+
+**Recommended Fix:** Simplify state to only include data not in URL:
+```javascript
+navigate(`/bookdetail/${urlId}`, {
+  state: {
+    book: {
+      title: book.title,
+      author: book.author,
+      coverUrl: book.coverUrl,
+      firstPublishYear: book.firstPublishYear,
+    },
+  },
+})
 ```
 
 ---
 
-## 3. DATA MODEL INCONSISTENCIES
+## Summary Table
 
-### 3.1 Book Description Field Missing in Database
+| # | Issue | Severity | File(s) | Effort | Impact |
+|---|-------|----------|---------|--------|--------|
+| 1 | Ratings null in SearchPage | 🔴 Critical | SearchPage.jsx | Low | High |
+| 2 | Star ratings not displayed | 🔴 Critical | BookCard.jsx, SearchPage.jsx | Low | High |
+| 3 | Auth bypass in SearchPage | 🔴 Critical | SearchPage.jsx | Low | Medium |
+| 4 | Average vs User rating confusion | 🔴 Critical | Multiple | Medium | High |
+| 5 | Inconsistent book ID handling | 🟠 High | Multiple | Medium | Medium |
+| 6 | Cover URL field inconsistency | 🟠 High | Multiple | Low | Medium |
+| 7 | Category filter only external | 🟠 High | SearchPage.jsx, books.js | Medium | Medium |
+| 8 | Rating count as string | 🟠 High | Book.js, books.js | Low | Low |
+| 9 | API_URL fallback inconsistency | 🟡 Medium | HomePage.jsx, config.js | Low | Low |
+| 10 | Missing env validation | 🟡 Medium | config.js | Low | Low |
+| 11 | Silent stats failures | 🟡 Medium | MyBooksPage.jsx | Low | Low |
+| 12 | No min search length | 🟡 Medium | Navbar.jsx | Low | Low |
+| 13 | Review without rating | 🟡 Medium | BookDetailPage.jsx | Low | Low |
+| 14 | Import style inconsistency | 🔵 Low | Multiple | Low | Low |
+| 15 | Unused nav state params | 🔵 Low | MyBooksPage.jsx | Low | Low |
 
-**Location:** 
-- `backend/migrations/schema.sql`: No `description` column in books table
-- `frontend/src/pages/BookDetailPage.jsx` (line 104-108): Checks for `book.description`
+---
 
-**Issue:** The frontend expects and displays a book description, but the database schema doesn't have this field. The Book model doesn't handle descriptions either.
+## Recommended Priority Order
 
-**Schema:**
-```sql
-CREATE TABLE books (
-    book_id SERIAL PRIMARY KEY,
-    open_library_id VARCHAR(50) UNIQUE,
-    title VARCHAR(255) NOT NULL,
-    author VARCHAR(255) NOT NULL,
-    cover_url TEXT,
-    first_publish_year INTEGER,
-    is_custom BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-    -- NO description column
-);
+### Phase 1: Critical Fixes (Immediate)
+1. Fix SearchPage rating mapping (Issue #1, #2)
+2. Create shared book mapper utility (Issue #6)
+3. Clarify average vs user rating (Issue #4)
+
+### Phase 2: Important Fixes (This Week)
+4. Fix SearchPage to use apiFetch (Issue #3)
+5. Standardize book ID handling (Issue #5)
+6. Fix category filter or remove (Issue #7)
+
+### Phase 3: Polish (Next Sprint)
+7. Add API_URL fallback (Issue #9)
+8. Add error logging (Issue #11)
+9. Code cleanup (Issues #14, #15)
+
+---
+
+## Appendix: Data Flow Diagrams
+
+### Book Data Flow (Current - Broken)
+```
+Backend (Book.search):
+  book_id, open_library_id, title, author, cover_url, 
+  average_rating (string), rating_count (string)
+    ↓
+SearchPage mapping:
+  id: open_library_id || book_id
+  coverUrl: cover_url
+  rating: null  ← BUG: ignores average_rating!
+    ↓
+BookCard:
+  Shows stars based on rating (always 0)
 ```
 
-**Impact:** Book descriptions from Open Library are never stored or displayed.
-
----
-
-### 3.2 Refresh Token Schema Mismatch with CONNECT.md
-
-**Location:** 
-- `backend/migrations/schema.sql` (lines 56-62)
-- `CONNECT.md` (lines 67-73)
-
-**CONNECT.md specifies:**
-```sql
-id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+### Book Data Flow (Recommended)
+```
+Backend:
+  book_id, open_library_id, title, author, cover_url,
+  average_rating (number), rating_count (number)
+    ↓
+Shared mapper:
+  id, olId, bookId, title, author, coverUrl,
+  averageRating (number), ratingCount (number)
+    ↓
+BookCard (showAverage=true):
+  Shows stars based on averageRating
 ```
 
-**Actual schema:**
-```sql
-id SERIAL PRIMARY KEY,
-user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+### User Book Data Flow (Current - Working)
 ```
-
-**Analysis:** The actual implementation uses SERIAL/INTEGER while CONNECT.md specifies UUID. This is actually fine because:
-- The users table uses SERIAL (not UUID)
-- INTEGER is more efficient for internal references
-- CONNECT.md was a design spec that evolved
-
-**Status:** Not an issue, just documentation drift.
-
----
-
-### 3.3 Book Model getOrCreateFromOpenLibrary Not Used
-
-**Location:** `backend/src/models/Book.js` (lines 180-207)
-
-**Issue:** The method `getOrCreateFromOpenLibrary` is defined but never called anywhere in the codebase. Open Library integration appears incomplete.
-
-**Impact:** Dead code. The search functionality only searches the local database, not Open Library.
-
----
-
-## 4. ERROR HANDLING ISSUES
-
-### 4.1 Error Handler Imports ValidationError from User Model Only
-
-**Location:** `backend/src/middleware/errorHandler.js` (line 29)
-
-**Current Code:**
-```js
-import { ValidationError, NotFoundError } from "../models/User.js";
+Backend (UserBook.getUserShelf):
+  user_book_id, book_id, status, rating (1-5), review, notes,
+  title, author, cover_url, open_library_id
+    ↓
+MyBooksPage mapping:
+  id: book_id
+  olId: open_library_id
+  rating: rating  ← Correct!
+    ↓
+BookCard (showAverage=false):
+  Shows stars based on rating
 ```
-
-**Issue:** The error handler imports error classes only from User.js, but:
-- `Book.js` defines its own `ValidationError` and `NotFoundError`
-- `UserBook.js` defines its own error classes including `ForbiddenError`
-
-These are separate class instances, so `instanceof` checks won't work for errors from Book or UserBook models.
-
-**Fix Options:**
-1. Create a shared `errors.js` module with all error classes
-2. Use duck typing (check `err.name` or `err.statusCode`)
-3. Use a base error class that all models extend
-
-**Current Impact:** Errors from Book/UserBook models may not get proper HTTP status codes.
-
----
-
-### 4.2 AuthContext Doesn't Surface Refresh Failures
-
-**Location:** `frontend/src/context/AuthContext.jsx` (lines 13-33)
-
-**Issue:** When `silentRefresh` fails, it silently sets `accessToken` and `user` to null without any notification to the user or logging. This could cause confusion about why the user was logged out.
-
----
-
-## 5. REDUNDANT CODE
-
-### 5.1 Multiple ValidationError Definitions
-
-**Locations:**
-- `backend/src/models/User.js` (lines 33-39)
-- `backend/src/models/Book.js` (lines 27-33)
-- `backend/src/models/UserBook.js` (lines 32-38)
-
-**Issue:** Same error class defined 3 times. Should be in a shared module.
-
----
-
-### 5.2 Multiple NotFoundError Definitions
-
-**Locations:**
-- `backend/src/models/User.js` (lines 41-47)
-- `backend/src/models/Book.js` (lines 35-41)
-- `backend/src/models/UserBook.js` (lines 40-46)
-
-**Issue:** Same error class defined 3 times.
-
----
-
-### 5.3 Comment Drift in auth.js
-
-**Location:** `backend/src/middleware/auth.js` (lines 1-25 comments)
-
-**Issue:** Comments say:
-- "24 hour expiration for security" (line 9)
-- "No cookie support (SPA/mobile friendly)" (line 23)
-
-But the code implements:
-- 15 minute expiration (line 40: `const TOKEN_EXPIRES_IN = "15m";`)
-- Cookie-based refresh tokens (in users.js and auth.js)
-
-**Fix:** Update comments to match implementation.
-
----
-
-### 5.4 Refresh Token Cookie Constants Duplicated
-
-**Locations:**
-- `backend/src/routes/users.js` (lines 38-39)
-- `backend/src/routes/auth.js` (lines 16-17)
-
-**Current:** Both files define:
-```js
-const REFRESH_COOKIE_NAME = "refresh_token";
-const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
-```
-
-**Fix:** Export from a shared config module.
-
----
-
-## 6. API CONSISTENCY ISSUES
-
-### 6.1 Login Response Structure
-
-**Location:** `backend/src/routes/users.js` (lines 138-142)
-
-**Response:**
-```js
-res.json({
-  message: "Login successful",
-  token: accessToken,
-  user: userWithoutPassword,
-});
-```
-
-**AuthContext expects:** (line 51-52)
-```js
-setAccessToken(data.token);
-setUser(data.user);
-```
-
-**Status:** ✅ Match. No issue.
-
----
-
-### 6.2 User Books Endpoint Returns Joined Data
-
-**Location:** `backend/src/models/UserBook.js` (lines 152-159)
-
-The `getUserShelf` method returns a JOIN of `user_books` and `books`:
-```sql
-SELECT ub.user_book_id, ub.user_id, ub.book_id, ub.status, ub.rating, 
-       ub.review, ub.notes, ub.created_at, ub.updated_at,
-       b.title, b.author, b.cover_url, b.first_publish_year, b.open_library_id
-```
-
-**MyBooksPage mapping** (lines 31-40):
-```js
-data.shelf.map(entry => ({
-  id: entry.book_id,
-  userBookId: entry.user_book_id,
-  title: entry.title,
-  author: entry.author,
-  coverUrl: entry.cover_url,
-  firstPublishYear: entry.first_publish_year,
-  rating: entry.rating,
-  status: entry.status,
-}))
-```
-
-**Status:** ✅ Correct mapping. The joined data prevents N+1 queries.
-
----
-
-### 6.3 Book Detail Page Uses Wrong ID for API Call
-
-**Location:** `frontend/src/pages/BookDetailPage.jsx` (line 46)
-
-**Current Code:**
-```js
-const body = { bookId: book.book_id, status: selectedStatus }
-```
-
-But `book` state is populated from `/api/books/${id}` which returns:
-```js
-res.json({ book });  // from books.js line 111
-```
-
-The book object from the API has `book_id` (PostgreSQL column name), not `book_id` mapped to `id`.
-
-**Backend Book.findById returns:**
-```js
-return result.rows[0];  // has book_id (not id)
-```
-
-**Frontend expects:**
-```js
-book.book_id  // This should work
-```
-
-**But the route param is:**
-```js
-const { id } = useParams();  // This is the URL param
-```
-
-**Status:** This is actually correct - the API returns `book_id` and the frontend uses it correctly. The confusion is in naming conventions.
-
----
-
-## 7. MISSING FEATURES (Per CONNECT.md)
-
-### 7.1 Navbar Live Search Not Implemented
-
-**CONNECT.md Section 6:** "Debounced search in the Navbar input that fires GET /api/books?q= and shows a dropdown of results"
-
-**Status:** ❌ Not implemented. Navbar search input is non-functional.
-
----
-
-### 7.2 User Stats Endpoint Not Used
-
-**Location:** `backend/src/routes/userBooks.js` (lines 114-133)
-
-The endpoint `GET /api/user-books/stats` exists and returns:
-```js
-{
-  userId,
-  stats: {
-    wantToRead: parseInt(stats.want_to_read_count, 10) || 0,
-    reading: parseInt(stats.reading_count, 10) || 0,
-    read: parseInt(stats.read_count, 10) || 0,
-    total: parseInt(stats.total_count, 10) || 0,
-    averageRating: ...
-  }
-}
-```
-
-**MyBooksPage** calculates counts client-side instead of using this endpoint.
-
----
-
-### 7.3 No Password Confirmation on Registration
-
-**Location:** `frontend/src/pages/SignUpPage.jsx`
-
-**Issue:** Registration form only has one password field. No confirmation field to prevent typos.
-
----
-
-## 8. MINOR ISSUES
-
-### 8.1 Unused Dependencies
-
-**Backend package.json:**
-- `multer` (^2.1.1) - Not used anywhere (no file uploads implemented)
-
-### 8.2 Frontend Shows "Sign in with Google/Apple" Without Implementation
-
-**Locations:**
-- `frontend/src/pages/SignInPage.jsx` (lines 93-100)
-- `frontend/src/pages/SignUpPage.jsx` (lines 157-163)
-
-**Issue:** OAuth buttons are present but non-functional. No backend endpoints exist for OAuth.
-
-### 8.3 Footer Newsletter Input Non-Functional
-
-**Location:** `frontend/src/components/Footer.jsx` (lines 53-64)
-
-The newsletter subscription form has no onSubmit handler.
-
-### 8.4 Categories Filter is Client-Side Only (No Effect)
-
-**Location:** `frontend/src/pages/SearchPage.jsx` (lines 29, 127-147)
-
-The category filter UI exists but:
-- Categories are not sent to the backend
-- Backend search doesn't support category filtering
-- Filter is only applied client-side (but categories aren't in the book data)
-
-### 8.5 Rating Filter Non-Functional
-
-**Location:** `frontend/src/pages/SearchPage.jsx` (lines 30, 190-211)
-
-The rating filter UI exists but ratings aren't sent to backend, and backend search doesn't support rating filtering.
-
----
-
-## 9. RECOMMENDATIONS
-
-### Priority 1 (Fix Immediately)
-
-1. **Add logout to Navbar** - Users can't log out currently
-2. **Fix apiFetch to handle 401s with silent refresh** - Critical for UX
-3. **Make Navbar search functional** - Core feature per spec
-
-### Priority 2 (Fix Soon)
-
-4. **Create shared error classes module** - Fix instanceof checks
-5. **Add book description column** - Match frontend expectations
-6. **Remove or implement OAuth buttons** - Don't show non-functional UI
-7. **Add rate limiting** - Security hardening
-
-### Priority 3 (Nice to Have)
-
-8. **Use stats endpoint in MyBooksPage** - More efficient
-9. **Add password confirmation** - Better UX
-10. **Extract cookie constants** - Code quality
-
----
-
-## 10. VERIFICATION CHECKLIST
-
-### Authentication Flow
-- [x] Login returns access token + sets refresh cookie
-- [x] Refresh endpoint rotates tokens correctly
-- [x] Logout clears cookie and deletes from DB
-- [ ] Silent refresh on 401 in apiFetch
-- [ ] Logout button in UI
-- [ ] Auth state reflected in Navbar
-
-### API Integration
-- [x] Search page fetches from `/api/books/search`
-- [x] Book detail loads from `/api/books/:id`
-- [x] Add to shelf POSTs to `/api/user-books`
-- [x] My books loads from `/api/user-books`
-- [ ] Navbar search implemented
-- [ ] Category filtering works
-- [ ] Rating filtering works
-
-### Security
-- [x] Passwords hashed with bcrypt
-- [x] JWT tokens have expiry
-- [x] Refresh tokens are httpOnly
-- [x] SameSite=Strict on cookies
-- [ ] Rate limiting on auth endpoints
-- [ ] CORS origin validation in production
-
----
-
-## Appendix: File-by-File Summary
-
-| File | Issues | Status |
-|------|--------|--------|
-| `backend/src/server.js` | CORS fallback in prod | ⚠️ Warning |
-| `backend/src/middleware/auth.js` | Comment drift | ⚠️ Warning |
-| `backend/src/middleware/errorHandler.js` | Imports wrong error classes | ❌ Bug |
-| `backend/src/middleware/validate.js` | None | ✅ OK |
-| `backend/src/routes/auth.js` | None | ✅ OK |
-| `backend/src/routes/users.js` | None | ✅ OK |
-| `backend/src/routes/books.js` | None | ✅ OK |
-| `backend/src/routes/userBooks.js` | None | ✅ OK |
-| `backend/src/models/User.js` | Duplicated error classes | ⚠️ Warning |
-| `backend/src/models/Book.js` | Duplicated error classes, dead code | ⚠️ Warning |
-| `backend/src/models/UserBook.js` | Duplicated error classes | ⚠️ Warning |
-| `backend/src/models/RefreshToken.js` | None | ✅ OK |
-| `frontend/src/context/AuthContext.jsx` | Doesn't handle 401s from apiFetch | ❌ Bug |
-| `frontend/src/utils/apiFetch.js` | No 401/refresh handling | ❌ Bug |
-| `frontend/src/components/Navbar.jsx` | No auth awareness, search non-functional | ❌ Bug |
-| `frontend/src/components/BookCard.jsx` | None | ✅ OK |
-| `frontend/src/App.jsx` | No logout in FloatingNav | ⚠️ Warning |
-| `frontend/src/pages/SignInPage.jsx` | OAuth buttons non-functional | ⚠️ Warning |
-| `frontend/src/pages/SignUpPage.jsx` | OAuth buttons non-functional, no confirm password | ⚠️ Warning |
-| `frontend/src/pages/SearchPage.jsx` | Filters non-functional | ⚠️ Warning |
-| `frontend/src/pages/BookDetailPage.jsx` | None | ✅ OK |
-| `frontend/src/pages/MyBooksPage.jsx` | Uses client-side filtering | ⚠️ Warning |
-| `frontend/src/pages/HomePage.jsx` | None | ✅ OK |
-
----
-
-*Report generated by comprehensive static analysis of the ShelfTrack codebase.*

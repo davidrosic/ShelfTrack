@@ -1,6 +1,6 @@
 import StarRating from "./StarRating";
 
-const BookCard = ({ book, onClick, onRemove, showStatus = false }) => {
+const BookCard = ({ book, onClick, onRemove, showStatus = false, showAverageRating = true }) => {
   const statusColors = {
     want_to_read: { bg: "#FEF3C7", text: "#92400E", label: "Want to read" },
     reading: { bg: "#DBEAFE", text: "#1E40AF", label: "Reading" },
@@ -8,6 +8,14 @@ const BookCard = ({ book, onClick, onRemove, showStatus = false }) => {
   };
 
   const status = book.status ? statusColors[book.status] : null;
+  
+  // Use averageRating for search/browse, rating for user's personal books
+  const displayRating = showAverageRating 
+    ? (book.averageRating || book.average_rating || 0)
+    : (book.rating || 0);
+  
+  const hasRatingCount = book.ratingCount > 0 || book.rating_count > 0;
+  const ratingCount = book.ratingCount || parseInt(book.rating_count, 10) || 0;
 
   return (
     <div className="group cursor-pointer" onClick={() => onClick?.(book)}>
@@ -56,7 +64,12 @@ const BookCard = ({ book, onClick, onRemove, showStatus = false }) => {
         {book.title}
       </h3>
       <p className="text-xs text-gray-500 mb-1">{book.author}</p>
-      <StarRating rating={book.rating || 0} size={12} />
+      <div className="flex items-center gap-1">
+        <StarRating rating={displayRating} size={12} />
+        {showAverageRating && hasRatingCount && (
+          <span className="text-xs text-gray-400">({ratingCount})</span>
+        )}
+      </div>
       {book.review && (
         <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic">"{book.review}"</p>
       )}

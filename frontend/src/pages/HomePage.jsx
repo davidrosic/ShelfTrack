@@ -42,7 +42,8 @@ const HomePage = () => {
           author: b.author,
           coverUrl: b.cover_url,
           firstPublishYear: b.first_publish_year,
-          rating: b.average_rating ? parseFloat(b.average_rating) : 0,
+          averageRating: b.average_rating ? parseFloat(b.average_rating) : null,
+          ratingCount: parseInt(b.rating_count, 10) || 0,
         }))
         setBooks(pickRandom(mapped, 8))
       })
