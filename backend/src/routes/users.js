@@ -31,8 +31,12 @@
 
 import { Router } from "express";
 import { User } from "../models/User.js";
+import { RefreshToken } from "../models/RefreshToken.js";
 import { authenticate, generateToken } from "../middleware/auth.js";
 import { validateBody, schemas } from "../middleware/validate.js";
+
+const REFRESH_COOKIE_NAME = "refresh_token";
+const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
 const router = Router();
 
@@ -90,7 +94,7 @@ router.post(
 
 /**
  * POST /api/users/login
- * Authenticate user and return JWT token
+ * Authenticate user and return JWT access token + set httpOnly refresh cookie
  */
 router.post(
   "/login",
@@ -111,16 +115,29 @@ router.post(
         });
       }
 
-      // Generate JWT token
-      const token = generateToken(user);
+      // Generate 15-min access token
+      const accessToken = generateToken(user);
 
-      // Return token and user data (without password_hash)
+      // Generate refresh token and store hash in DB
+      const { rawToken, expiresAt } = await RefreshToken.create(user.user_id, 7);
+
+      // Set httpOnly refresh cookie
+      res.cookie(REFRESH_COOKIE_NAME, rawToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/api/auth/refresh",
+        maxAge: REFRESH_COOKIE_MAX_AGE,
+        expires: expiresAt,
+      });
+
+      // Return access token and user data (without password_hash)
       // eslint-disable-next-line no-unused-vars
       const { password_hash, ...userWithoutPassword } = user;
 
       res.json({
         message: "Login successful",
-        token,
+        token: accessToken,
         user: userWithoutPassword,
       });
     } catch (err) {

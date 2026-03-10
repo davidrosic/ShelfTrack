@@ -37,7 +37,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
  * Token expiration time
  * @type {string}
  */
-const TOKEN_EXPIRES_IN = "24h";
+const TOKEN_EXPIRES_IN = "15m";
 
 /**
  * Generate JWT token for user
