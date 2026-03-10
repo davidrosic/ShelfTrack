@@ -42,6 +42,15 @@ import userBookRoutes from "./routes/userBooks.js";
 // Import middleware
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
+// Import rate limiters
+import {
+  authLimiter,
+  refreshLimiter,
+  searchLimiter,
+  readLimiter,
+  writeLimiter,
+} from "./middleware/rateLimit.js";
+
 // Load environment variables
 dotenv.config();
 
@@ -90,6 +99,27 @@ app.use(
   })
 );
 
+/**
+ * Rate Limiting: Prevent abuse and brute force attacks
+ * Different tiers for different endpoint types
+ */
+
+// Apply general read limiter to all GET requests (except health)
+app.use((req, res, next) => {
+  if (req.method === "GET" && req.path !== "/health") {
+    return readLimiter(req, res, next);
+  }
+  next();
+});
+
+// Apply write limiter to all POST/PUT/PATCH/DELETE requests
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    return writeLimiter(req, res, next);
+  }
+  next();
+});
+
 // ============================================
 // REQUEST PARSING
 // ============================================
@@ -129,9 +159,20 @@ app.get("/health", (req, res) => {
 // API ROUTES
 // ============================================
 
+// Auth routes - refresh endpoint has specific limits for token rotation detection
+app.use("/api/auth/refresh", refreshLimiter);
 app.use("/api/auth", authRoutes);
+
+// User routes - login and register have strict brute force protection
+app.use("/api/users/login", authLimiter);
+app.use("/api/users/register", authLimiter);
 app.use("/api/users", userRoutes);
+
+// Book routes - search is expensive (ILIKE with wildcards)
+app.use("/api/books/search", searchLimiter);
 app.use("/api/books", bookRoutes);
+
+// User book routes - all require auth, writeLimiter handles per-user limits
 app.use("/api/user-books", userBookRoutes);
 
 // ============================================
