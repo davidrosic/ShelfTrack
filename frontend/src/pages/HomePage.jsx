@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { ChevronRight } from '../components/Icons'
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import { API_URL } from '../config'
 
 const categories = [
   { name: 'Romance', count: 5, color: '#F5E6D3' },
