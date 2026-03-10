@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { SearchIcon } from './Icons'
 import { useAuth } from '../context/AuthContext'
-import { API_URL } from '../config'
+import { apiFetch } from '../utils/apiFetch'
 
 const SearchBox = () => {
   const navigate = useNavigate()
+  const { accessToken } = useAuth()
   const [value, setValue] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [open, setOpen] = useState(false)
@@ -23,14 +24,16 @@ const SearchBox = () => {
     const timer = setTimeout(async () => {
       try {
         // Use backend universal search with auto source
-        const res = await fetch(
-          `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=6&source=auto`
+        const data = await apiFetch(
+          `/api/books/search-universal?q=${encodeURIComponent(q)}&limit=6&source=auto`,
+          {},
+          accessToken
         )
-        const data = await res.json()
         // Map backend response to suggestion format
         setSuggestions(data.books || [])
         setOpen(true)
-      } catch {
+      } catch (err) {
+        console.error('[SearchBox] Failed to fetch suggestions:', err)
         setSuggestions([])
       }
     }, 300)
