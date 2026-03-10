@@ -124,7 +124,7 @@ router.get("/stats", async (req, res, next) => {
         read: parseInt(stats.read_count, 10) || 0,
         total: parseInt(stats.total_count, 10) || 0,
         averageRating: stats.average_rating
-          ? parseFloat(stats.average_rating).toFixed(2)
+          ? Math.round(parseFloat(stats.average_rating) * 100) / 100
           : null,
       },
     });
