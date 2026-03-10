@@ -106,7 +106,7 @@ router.get("/search", async (req, res, next) => {
               : null,
             first_publish_year: doc.first_publish_year || null,
             average_rating: null,
-            rating_count: "0",
+            rating_count: 0,
             source: "api",
           }));
       }

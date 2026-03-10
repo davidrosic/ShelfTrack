@@ -122,7 +122,7 @@ export class Book {
     const result = await query(
       `SELECT b.book_id, b.open_library_id, b.title, b.author, b.cover_url, b.first_publish_year, b.is_custom, b.created_at,
               ROUND(AVG(ub.rating)::numeric, 1) AS average_rating,
-              COUNT(ub.rating) AS rating_count
+              COUNT(ub.rating)::int AS rating_count
        FROM books b
        LEFT JOIN user_books ub ON b.book_id = ub.book_id AND ub.rating IS NOT NULL
        WHERE b.title ILIKE $1 OR b.author ILIKE $1
