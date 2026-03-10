@@ -6,6 +6,7 @@ import BookCard from '../components/BookCard'
 import { SearchIcon } from '../components/Icons'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
+import { mapBookFromAPI, mapBookForNavigation } from '../utils/bookMapper'
 
 const CATEGORIES = [
   'All',
@@ -127,7 +128,7 @@ const SearchPage = () => {
       : books
 
   const handleBookClick = book => {
-    navigate(`/bookdetail/${book.id}`, { state: { book } })
+    navigate(`/bookdetail/${book.id}`, { state: { book: mapBookForNavigation(book) } })
   }
 
   // Load more results from external source
@@ -143,18 +144,7 @@ const SearchPage = () => {
     try {
       const data = await apiFetch(path, {}, accessToken)
 
-      const newBooks = (data.books || []).map(book => ({
-        id: book.open_library_id || book.book_id,
-        bookId: book.book_id,
-        openLibraryId: book.open_library_id,
-        title: book.title || 'Unknown Title',
-        author: book.author || 'Unknown Author',
-        coverUrl: book.cover_url,
-        firstPublishYear: book.first_publish_year || null,
-        averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
-        ratingCount: parseInt(book.rating_count, 10) || 0,
-        source: book.source,
-      }))
+      const newBooks = (data.books || []).map(mapBookFromAPI)
 
       setBooks(prev => [...prev, ...newBooks])
       setHasMore(data.hasMore)

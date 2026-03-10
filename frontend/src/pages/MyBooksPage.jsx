@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../utils/apiFetch'
+import { mapBookFromAPI, mapBookForNavigation, getBookUrlId } from '../utils/bookMapper'
 
 const STATUS_TABS = [
   { value: 'all', label: 'All' },
@@ -58,20 +59,7 @@ const MyBooksPage = () => {
     const url = activeTab === 'all' ? '/api/user-books' : '/api/user-books?status=' + activeTab
     apiFetch(url, {}, accessToken)
       .then(data => {
-        setBooks(
-          data.shelf.map(entry => ({
-            id: entry.book_id,
-            olId: entry.open_library_id,
-            userBookId: entry.user_book_id,
-            title: entry.title,
-            author: entry.author,
-            coverUrl: entry.cover_url,
-            firstPublishYear: entry.first_publish_year,
-            rating: entry.rating,
-            review: entry.review,
-            status: entry.status,
-          }))
-        )
+        setBooks((data.shelf || []).map(mapBookFromAPI))
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -103,18 +91,8 @@ const MyBooksPage = () => {
   }
 
   const handleBookClick = book => {
-    const urlId = book.olId || String(book.id)
-    navigate('/bookdetail/' + urlId, {
-      state: {
-        book: {
-          id: urlId,
-          olId: book.olId,
-          title: book.title,
-          author: book.author,
-          coverUrl: book.coverUrl,
-          firstPublishYear: book.firstPublishYear,
-        },
-      },
+    navigate('/bookdetail/' + getBookUrlId(book), {
+      state: { book: mapBookForNavigation(book) },
     })
   }
 

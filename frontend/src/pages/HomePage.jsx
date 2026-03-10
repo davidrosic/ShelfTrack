@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { ChevronRight } from '../components/Icons'
 import { apiFetch } from '../utils/apiFetch'
+import { mapBookFromAPI, mapBookForNavigation, getBookUrlId } from '../utils/bookMapper'
 
 const categories = [
   { name: 'Romance', count: 5, color: '#F5E6D3' },
@@ -34,17 +35,7 @@ const HomePage = () => {
     // Fetch books from the DB using a broad query, then pick random ones client-side
     apiFetch('/api/books/search?q=e&limit=100')
       .then(data => {
-        const mapped = (data.books || []).map(b => ({
-          id: b.open_library_id || String(b.book_id),
-          olId: b.open_library_id,
-          title: b.title,
-          author: b.author,
-          coverUrl: b.cover_url,
-          firstPublishYear: b.first_publish_year,
-          averageRating: b.average_rating ? parseFloat(b.average_rating) : null,
-          ratingCount: parseInt(b.rating_count, 10) || 0,
-        }))
-        setBooks(pickRandom(mapped, 8))
+        setBooks(pickRandom((data.books || []).map(mapBookFromAPI), 8))
       })
       .catch(err => {
         console.error('[HomePage] Failed to load books:', err)
@@ -52,8 +43,7 @@ const HomePage = () => {
   }, [])
 
   const handleBookClick = book => {
-    const urlId = book.olId || book.id
-    navigate(`/bookdetail/${urlId}`, { state: { book } })
+    navigate(`/bookdetail/${getBookUrlId(book)}`, { state: { book: mapBookForNavigation(book) } })
   }
 
   // Hero books: first 3 from the random set (or placeholders if still loading)
