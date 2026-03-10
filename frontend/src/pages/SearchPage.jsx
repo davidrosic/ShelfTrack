@@ -107,12 +107,21 @@ const SearchPage = () => {
     setAuthorTags([])
   }
 
-  const visibleBooks =
-    authorTags.length > 0
-      ? books.filter(b =>
-          authorTags.some(tag => b.author.toLowerCase().includes(tag.toLowerCase()))
-        )
-      : books
+  const visibleBooks = books.filter(book => {
+    // Author filter
+    if (authorTags.length > 0 && !authorTags.some(tag => 
+      book.author.toLowerCase().includes(tag.toLowerCase()))) {
+      return false
+    }
+    // Rating filter
+    if (selectedRating !== 'All') {
+      const minRating = parseInt(selectedRating, 10)
+      if ((book.averageRating || 0) < minRating) {
+        return false
+      }
+    }
+    return true
+  })
 
   const handleBookClick = book => {
     navigate(`/bookdetail/${book.id}`, { state: { book: mapBookForNavigation(book) } })
