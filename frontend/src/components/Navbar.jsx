@@ -70,6 +70,8 @@ const SearchBox = () => {
       author: book.author,
       coverUrl: book.cover_url,
       firstPublishYear: book.first_publish_year,
+      averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
+      ratingCount: parseInt(book.rating_count, 10) || 0,
     }
     setValue('')
     setOpen(false)
