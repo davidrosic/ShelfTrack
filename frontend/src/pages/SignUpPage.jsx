@@ -3,14 +3,54 @@ import { useNavigate } from "react-router-dom";
 import BookshelfIllustration from "../components/BookshelfIllustration";
 import { GoogleIcon, AppleIcon } from "../components/Icons";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../utils/apiFetch";
 
-const SignUpPage = ({ onLogin }) => {
+const SignUpPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
+    username: "",
     email: "",
     password: "",
     agreeTerms: false,
+  });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!formData.agreeTerms) {
+      setError("You must agree to the terms & policy");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await apiFetch("/api/users/register", {
+        method: "POST",
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+      // Auto-login after successful registration
+      await login(formData.email, formData.password);
+      navigate("/");
+    } catch (err) {
+      setError(err.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const field = (key) => ({
+    value: formData[key],
+    onChange: (e) => setFormData({ ...formData, [key]: e.target.value }),
   });
 
   return (
@@ -30,16 +70,37 @@ const SignUpPage = ({ onLogin }) => {
             Get Started Now
           </h1>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-sm text-gray-300 mb-1.5">First name</label>
+                <input
+                  type="text"
+                  placeholder="First name"
+                  className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
+                  style={{ backgroundColor: "transparent", borderColor: "#3a3a3a" }}
+                  {...field("firstName")}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm text-gray-300 mb-1.5">Last name</label>
+                <input
+                  type="text"
+                  placeholder="Last name"
+                  className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
+                  style={{ backgroundColor: "transparent", borderColor: "#3a3a3a" }}
+                  {...field("lastName")}
+                />
+              </div>
+            </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-1.5">Name</label>
+              <label className="block text-sm text-gray-300 mb-1.5">Username</label>
               <input
                 type="text"
-                placeholder="Enter your name"
+                placeholder="Choose a username"
                 className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
                 style={{ backgroundColor: "transparent", borderColor: "#3a3a3a" }}
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                {...field("username")}
               />
             </div>
             <div>
@@ -49,19 +110,17 @@ const SignUpPage = ({ onLogin }) => {
                 placeholder="Enter your email"
                 className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
                 style={{ backgroundColor: "transparent", borderColor: "#3a3a3a" }}
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                {...field("email")}
               />
             </div>
             <div>
               <label className="block text-sm text-gray-300 mb-1.5">Password</label>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Password (min 8 characters)"
                 className="w-full px-4 py-3 rounded-lg border text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-600 transition-colors"
                 style={{ backgroundColor: "transparent", borderColor: "#3a3a3a" }}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                {...field("password")}
               />
             </div>
           </div>
@@ -76,12 +135,17 @@ const SignUpPage = ({ onLogin }) => {
             <span className="text-xs text-gray-400">I agree to the terms & policy</span>
           </label>
 
+          {error && (
+            <p className="mt-4 text-sm text-red-400">{error}</p>
+          )}
+
           <button
-            onClick={() => { onLogin?.(); navigate("/"); }}
-            className="w-full py-3 rounded-lg text-white font-semibold text-sm mt-6 transition-all hover:brightness-110 active:scale-[0.98]"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full py-3 rounded-lg text-white font-semibold text-sm mt-6 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
             style={{ backgroundColor: "#8B7355" }}
           >
-            Signup
+            {loading ? "Creating account…" : "Sign up"}
           </button>
 
           <div className="flex items-center gap-4 my-6">

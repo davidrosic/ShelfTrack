@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
@@ -26,7 +27,7 @@ function FloatingNav({ isLoggedIn }) {
 
   const loggedInNav = [
     { path: "/", label: "Home" },
-    { path: "/bookdetail", label: "Book Detail" },
+    { path: "/search", label: "Search" },
     { path: "/mybooks", label: "My Books" },
   ];
 
@@ -61,17 +62,17 @@ function FloatingNav({ isLoggedIn }) {
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isLoggedIn } = useAuth();
 
   return (
     <>
       <FloatingNav isLoggedIn={isLoggedIn} />
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/signin" element={<SignInPage onLogin={() => setIsLoggedIn(true)} />} />
-        <Route path="/signup" element={<SignUpPage onLogin={() => setIsLoggedIn(true)} />} />
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/bookdetail" element={<BookDetailPage />} />
+        <Route path="/bookdetail/:id" element={<BookDetailPage />} />
         <Route path="/mybooks" element={<MyBooksPage />} />
       </Routes>
     </>

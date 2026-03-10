@@ -3,14 +3,27 @@ import { useNavigate } from "react-router-dom";
 import BookshelfIllustration from "../components/BookshelfIllustration";
 import { GoogleIcon, AppleIcon } from "../components/Icons";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
 
-const SignInPage = ({ onLogin }) => {
+const SignInPage = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    remember: false,
-  });
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await login(formData.email, formData.password);
+      navigate("/");
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -53,26 +66,22 @@ const SignInPage = ({ onLogin }) => {
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-600 transition-colors"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               />
             </div>
           </div>
 
-          <label className="flex items-center gap-2 mt-5 cursor-pointer">
-            <input
-              type="checkbox"
-              className="w-4 h-4 rounded accent-amber-700"
-              checked={formData.remember}
-              onChange={(e) => setFormData({ ...formData, remember: e.target.checked })}
-            />
-            <span className="text-xs text-gray-500">Remember for 30 days</span>
-          </label>
+          {error && (
+            <p className="mt-4 text-sm text-red-500">{error}</p>
+          )}
 
           <button
-            onClick={() => { onLogin?.(); navigate("/"); }}
-            className="w-full py-3 rounded-lg text-white font-semibold text-sm mt-6 transition-all hover:brightness-110 active:scale-[0.98]"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full py-3 rounded-lg text-white font-semibold text-sm mt-6 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
             style={{ backgroundColor: "#8B7355" }}
           >
-            Sign in
+            {loading ? "Signing in…" : "Sign in"}
           </button>
 
           <div className="flex items-center gap-4 my-6">

@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
+import { SearchIcon } from '../components/Icons'
+import { apiFetch } from '../utils/apiFetch'
 
 const CATEGORIES = [
   'All',
@@ -14,23 +16,65 @@ const CATEGORIES = [
 ]
 const RATINGS = ['All', '5 stars', '4 stars', '3 stars', '2 stars', '1 star']
 
-// Mock data — replace with Open Library API
-const MOCK_BOOKS = Array.from({ length: 20 }, (_, i) => ({
-  id: i + 1,
-  title: 'Book name',
-  author: 'Author',
-  rating: Math.floor(Math.random() * 3) + 3,
-  coverUrl: null,
-}))
-
 const SearchPage = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const q = searchParams.get('q') || ''
+
+  const [inputValue, setInputValue] = useState(q)
+  const [books, setBooks] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedRating, setSelectedRating] = useState('All')
   const [authorTags, setAuthorTags] = useState([])
   const [authorInput, setAuthorInput] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const totalPages = 10
+
+  // Fetch when URL q param changes
+  useEffect(() => {
+    if (!q.trim()) {
+      setBooks([])
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    apiFetch(`/api/books/search?q=${encodeURIComponent(q)}&limit=50`)
+      .then(data => {
+        if (!cancelled) {
+          // Map snake_case DB fields to camelCase for BookCard
+          setBooks(
+            data.books.map(b => ({
+              id: b.book_id,
+              title: b.title,
+              author: b.author,
+              coverUrl: b.cover_url,
+              firstPublishYear: b.first_publish_year,
+              rating: null, // ratings live in user_books, not books
+            })),
+          )
+        }
+      })
+      .catch(err => {
+        if (!cancelled) setError(err.message)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [q])
+
+  const handleSearch = e => {
+    e.preventDefault()
+    const trimmed = inputValue.trim()
+    if (trimmed) setSearchParams({ q: trimmed })
+  }
 
   const addAuthorTag = e => {
     if (e.key === 'Enter' && authorInput.trim()) {
@@ -50,6 +94,14 @@ const SearchPage = () => {
     setSelectedRating('All')
     setAuthorTags([])
   }
+
+  // Client-side author filter on top of API results
+  const visibleBooks =
+    authorTags.length > 0
+      ? books.filter(b =>
+          authorTags.some(tag => b.author.toLowerCase().includes(tag.toLowerCase())),
+        )
+      : books
 
   return (
     <div className="min-h-screen bg-white">
@@ -163,45 +215,100 @@ const SearchPage = () => {
 
         {/* ===== MAIN CONTENT ===== */}
         <main className="flex-1">
+          {/* Search bar */}
+          <form onSubmit={handleSearch} className="mb-6">
+            <div className="flex items-center px-4 py-3 rounded-full border border-gray-200 bg-gray-50 gap-3">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search by title or author..."
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
+              />
+              {inputValue && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputValue('')
+                    setSearchParams({})
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                >
+                  ×
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-4 py-1.5 rounded-full text-white text-xs font-semibold transition-all hover:brightness-110"
+                style={{ backgroundColor: '#8B7355' }}
+              >
+                Search
+              </button>
+            </div>
+          </form>
+
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h1
               className="text-2xl font-bold"
               style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
             >
-              Books
+              {q ? `Results for "${q}"` : 'Books'}
             </h1>
+            {visibleBooks.length > 0 && (
+              <span className="text-xs text-gray-400">
+                {visibleBooks.length} {visibleBooks.length === 1 ? 'book' : 'books'}
+              </span>
+            )}
           </div>
 
-          {/* Book Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {MOCK_BOOKS.map(book => (
-              <BookCard key={book.id} book={book} onClick={() => navigate('/bookdetail')} />
-            ))}
-          </div>
+          {/* States */}
+          {loading && (
+            <div className="flex justify-center py-20">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: '#8B7355', borderTopColor: 'transparent' }}
+              />
+            </div>
+          )}
 
-          {/* Pagination */}
-          <div className="flex items-center justify-center gap-2 mt-12">
-            {[1, 2, 3, '...', totalPages].map((page, i) => (
+          {error && !loading && (
+            <div className="text-center py-20">
+              <p className="text-sm text-red-500 mb-4">{error}</p>
               <button
-                key={i}
-                onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                className="w-9 h-9 rounded-full text-sm font-medium flex items-center justify-center transition-colors"
-                style={{
-                  backgroundColor: currentPage === page ? '#8B7355' : 'transparent',
-                  color: currentPage === page ? '#fff' : '#666',
-                  border: currentPage === page ? 'none' : '1px solid #e5e7eb',
-                }}
+                onClick={() => setSearchParams({ q })}
+                className="text-xs font-medium hover:underline"
+                style={{ color: '#8B7355' }}
               >
-                {page}
+                Try again
               </button>
-            ))}
-            <button
-              className="w-9 h-9 rounded-full text-sm flex items-center justify-center border border-gray-200 text-gray-500 hover:bg-gray-50"
-              onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-            >
-              ›
-            </button>
-          </div>
+            </div>
+          )}
+
+          {!loading && !error && !q && (
+            <div className="text-center py-20 text-gray-400">
+              <p className="text-sm">Enter a title or author above to search.</p>
+            </div>
+          )}
+
+          {!loading && !error && q && visibleBooks.length === 0 && (
+            <div className="text-center py-20 text-gray-400">
+              <p className="text-sm">No books found for "{q}".</p>
+            </div>
+          )}
+
+          {!loading && !error && visibleBooks.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {visibleBooks.map(book => (
+                <BookCard
+                  key={book.id}
+                  book={book}
+                  onClick={() => navigate(`/bookdetail/${book.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </main>
       </div>
 
