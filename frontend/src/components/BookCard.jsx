@@ -1,4 +1,5 @@
 import StarRating from "./StarRating";
+import { sanitizeText } from "../utils/sanitize";
 
 const BookCard = ({ book, onClick, onRemove, showStatus = false, showAverageRating = true }) => {
   const statusColors = {
@@ -71,7 +72,7 @@ const BookCard = ({ book, onClick, onRemove, showStatus = false, showAverageRati
         )}
       </div>
       {book.review && (
-        <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic">"{book.review}"</p>
+        <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic">"{sanitizeText(book.review)}"</p>
       )}
     </div>
   );

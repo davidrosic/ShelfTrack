@@ -77,8 +77,29 @@ const PORT = process.env.PORT || 3000;
  * - X-Content-Type-Options: nosniff
  * - X-Frame-Options: DENY
  * - Content-Security-Policy: restrict resource loading
+ * - HSTS: HTTP Strict Transport Security
+ * - Referrer-Policy: Control referrer information
  */
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "https://covers.openlibrary.org", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  referrerPolicy: { policy: "same-origin" }
+}));
 
 /**
  * CORS: Cross-Origin Resource Sharing
@@ -127,6 +148,41 @@ app.use((req, res, next) => {
 
 // Cookie parser - needed for refresh token handling
 app.use(cookieParser());
+
+// ============================================
+// CSRF PROTECTION
+// ============================================
+
+/**
+ * CSRF protection middleware
+ * Requires X-Requested-With header for state-changing operations
+ * This ensures requests come from our SPA, not third-party sites
+ */
+const CSRF_PROTECTED_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const CSRF_EXEMPT_PATHS = ['/api/auth/login', '/api/auth/register', '/api/users/login', '/api/users/register'];
+
+app.use((req, res, next) => {
+  // Skip for safe methods
+  if (!CSRF_PROTECTED_METHODS.includes(req.method)) {
+    return next();
+  }
+  
+  // Skip for exempt paths (authentication endpoints)
+  if (CSRF_EXEMPT_PATHS.some(path => req.path.startsWith(path))) {
+    return next();
+  }
+  
+  // Check for custom header that only our SPA sends
+  const requestedWith = req.headers['x-requested-with'];
+  if (!requestedWith || requestedWith !== 'XMLHttpRequest') {
+    return res.status(403).json({
+      error: 'CSRFError',
+      message: 'CSRF protection: X-Requested-With header required'
+    });
+  }
+  
+  next();
+});
 
 // Body parsers
 app.use(express.json({ limit: "10mb" }));

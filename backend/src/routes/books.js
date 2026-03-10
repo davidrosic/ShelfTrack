@@ -30,17 +30,35 @@
  */
 
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { Book } from "../models/Book.js";
 import { validateBody, schemas } from "../middleware/validate.js";
 
 const router = Router();
 
 /**
+ * Rate limiter for book creation
+ * Prevents spam/book pollution attacks
+ */
+const bookCreateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 50, // 50 books per hour per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: "RateLimitError",
+      message: "Book creation limit exceeded. Maximum 50 books per hour."
+    });
+  }
+});
+
+/**
  * POST /api/books
  * Create or update a book
  * Uses upsert pattern for Open Library ID conflicts
  */
-router.post("/", validateBody(schemas.book.create), async (req, res, next) => {
+router.post("/", bookCreateLimiter, validateBody(schemas.book.create), async (req, res, next) => {
   try {
     const book = await Book.create(req.body);
 
@@ -153,10 +171,37 @@ router.get("/search-universal", async (req, res, next) => {
       subject = null 
     } = req.query;
 
+    // Validate search term
     if (!q || q.trim().length === 0) {
       return res.status(400).json({
         error: "ValidationError",
         message: "Search query parameter 'q' is required",
+      });
+    }
+    
+    // Search term length limit
+    const MAX_SEARCH_LENGTH = 200;
+    if (q.length > MAX_SEARCH_LENGTH) {
+      return res.status(400).json({
+        error: "ValidationError",
+        message: `Search query too long (max ${MAX_SEARCH_LENGTH} characters)`,
+      });
+    }
+    
+    // Block potential injection patterns
+    const blockedPattern = /[<>"'%;()&+\r\n\x00]/;
+    if (blockedPattern.test(q)) {
+      return res.status(400).json({
+        error: "ValidationError",
+        message: "Invalid characters in search query",
+      });
+    }
+    
+    // Validate subject if provided
+    if (subject && (subject.length > 100 || blockedPattern.test(subject))) {
+      return res.status(400).json({
+        error: "ValidationError",
+        message: "Invalid subject filter",
       });
     }
 
@@ -169,9 +214,9 @@ router.get("/search-universal", async (req, res, next) => {
       });
     }
 
-    // Cap limit at 50
-    const parsedLimit = Math.min(parseInt(limit, 10) || 20, 50);
-    const parsedOffset = parseInt(offset, 10) || 0;
+    // Cap limit at 50 and validate offset
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
+    const parsedOffset = Math.min(Math.max(parseInt(offset, 10) || 0, 0), 10000);
 
     const result = await Book.searchUniversal(q, {
       limit: parsedLimit,

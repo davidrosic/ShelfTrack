@@ -174,8 +174,12 @@ export class User {
    * @returns {Promise<boolean>} True if password matches
    */
   static async verifyPassword(plainPassword, hashedPassword) {
-    if (!plainPassword || !hashedPassword) return false;
-    return bcrypt.compare(plainPassword, hashedPassword);
+    // SECURITY: Always perform bcrypt comparison to prevent timing attacks
+    // that could allow username enumeration. Use dummy hash if none provided.
+    const dummyHash = '$2a$12$' + '0'.repeat(53); // Valid bcrypt format dummy hash
+    const hashToCompare = hashedPassword || dummyHash;
+    const passwordToCompare = plainPassword || '';
+    return bcrypt.compare(passwordToCompare, hashToCompare);
   }
 
   /**
