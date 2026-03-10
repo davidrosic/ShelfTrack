@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { API_URL } from '../config';
 import { apiFetch } from '../utils/apiFetch';
+import { authStore } from '../utils/authStore';
 
 const AuthContext = createContext(null);
 
@@ -19,22 +20,25 @@ export function AuthProvider({ children }) {
       if (!res.ok) {
         setAccessToken(null);
         setUser(null);
-        return;
+        return null;
       }
       const data = await res.json();
       setAccessToken(data.token);
       // Schedule next silent refresh 60s before the 15-min access token expires
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = setTimeout(() => silentRefreshRef.current?.(), 14 * 60 * 1000);
+      return data.token;
     } catch {
       setAccessToken(null);
       setUser(null);
+      return null;
     }
   }, []);
 
   // Keep the ref in sync so the timer callback always calls the latest version
   useEffect(() => {
     silentRefreshRef.current = silentRefresh;
+    authStore.refreshFn = silentRefresh;
   }, [silentRefresh]);
 
   // On app mount: attempt silent refresh to restore an existing session

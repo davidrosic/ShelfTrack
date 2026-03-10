@@ -4,7 +4,8 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { SearchIcon } from '../components/Icons'
-import { apiFetch } from '../utils/apiFetch'
+
+const OL_SEARCH = 'https://openlibrary.org/search.json'
 
 const CATEGORIES = [
   'All',
@@ -14,6 +15,14 @@ const CATEGORIES = [
   'Poetry',
   'Graphic Novels & Comics',
 ]
+
+const CATEGORY_SUBJECTS = {
+  'Fiction': 'fiction',
+  'Educational': 'education',
+  'Religious & Spiritual': 'religion',
+  'Poetry': 'poetry',
+  'Graphic Novels & Comics': 'comics',
+}
 const RATINGS = ['All', '5 stars', '4 stars', '3 stars', '2 stars', '1 star']
 
 const SearchPage = () => {
@@ -31,7 +40,6 @@ const SearchPage = () => {
   const [authorTags, setAuthorTags] = useState([])
   const [authorInput, setAuthorInput] = useState('')
 
-  // Fetch when URL q param changes
   useEffect(() => {
     if (!q.trim()) {
       setBooks([])
@@ -42,19 +50,30 @@ const SearchPage = () => {
     setLoading(true)
     setError(null)
 
-    apiFetch(`/api/books/search?q=${encodeURIComponent(q)}&limit=50`)
+    const subject = CATEGORY_SUBJECTS[selectedCategory]
+    const url = `${OL_SEARCH}?q=${encodeURIComponent(q)}&limit=50&fields=key,title,author_name,first_publish_year,cover_i${subject ? `&subject=${subject}` : ''}`
+
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error('Search failed')
+        return r.json()
+      })
       .then(data => {
         if (!cancelled) {
-          // Map snake_case DB fields to camelCase for BookCard
           setBooks(
-            data.books.map(b => ({
-              id: b.book_id,
-              title: b.title,
-              author: b.author,
-              coverUrl: b.cover_url,
-              firstPublishYear: b.first_publish_year,
-              rating: null, // ratings live in user_books, not books
-            })),
+            (data.docs || []).map(doc => {
+              const olId = doc.key.split('/').pop()
+              return {
+                id: olId,
+                title: doc.title || 'Unknown Title',
+                author: doc.author_name?.[0] || 'Unknown Author',
+                coverUrl: doc.cover_i
+                  ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+                  : null,
+                firstPublishYear: doc.first_publish_year || null,
+                rating: null,
+              }
+            })
           )
         }
       })
@@ -68,7 +87,7 @@ const SearchPage = () => {
     return () => {
       cancelled = true
     }
-  }, [q])
+  }, [q, selectedCategory])
 
   const handleSearch = e => {
     e.preventDefault()
@@ -85,9 +104,7 @@ const SearchPage = () => {
     }
   }
 
-  const removeAuthorTag = tag => {
-    setAuthorTags(prev => prev.filter(t => t !== tag))
-  }
+  const removeAuthorTag = tag => setAuthorTags(prev => prev.filter(t => t !== tag))
 
   const resetFilters = () => {
     setSelectedCategory('All')
@@ -95,18 +112,19 @@ const SearchPage = () => {
     setAuthorTags([])
   }
 
-  // Client-side author filter on top of API results
   const visibleBooks =
     authorTags.length > 0
       ? books.filter(b =>
-          authorTags.some(tag => b.author.toLowerCase().includes(tag.toLowerCase())),
+          authorTags.some(tag => b.author.toLowerCase().includes(tag.toLowerCase()))
         )
       : books
 
+  const handleBookClick = book => {
+    navigate(`/bookdetail/${book.id}`, { state: { book } })
+  }
+
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
-
       <div className="flex px-6 lg:px-12 py-8 gap-8">
         {/* ===== SIDEBAR FILTERS ===== */}
         <aside className="hidden lg:block w-60 shrink-0">
@@ -124,30 +142,6 @@ const SearchPage = () => {
           </div>
 
           <div className="space-y-5">
-            {/* Categories */}
-            <div>
-              <div
-                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-                style={{ backgroundColor: '#8B7355' }}
-              >
-                Categories
-              </div>
-              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
-                {CATEGORIES.map(cat => (
-                  <label key={cat} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="category"
-                      checked={selectedCategory === cat}
-                      onChange={() => setSelectedCategory(cat)}
-                      className="w-3.5 h-3.5 accent-amber-700"
-                    />
-                    <span className="text-xs text-gray-600">{cat}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             {/* Author */}
             <div>
               <div
@@ -215,7 +209,6 @@ const SearchPage = () => {
 
         {/* ===== MAIN CONTENT ===== */}
         <main className="flex-1">
-          {/* Search bar */}
           <form onSubmit={handleSearch} className="mb-6">
             <div className="flex items-center px-4 py-3 rounded-full border border-gray-200 bg-gray-50 gap-3">
               <SearchIcon />
@@ -248,7 +241,6 @@ const SearchPage = () => {
             </div>
           </form>
 
-          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h1
               className="text-2xl font-bold"
@@ -263,7 +255,6 @@ const SearchPage = () => {
             )}
           </div>
 
-          {/* States */}
           {loading && (
             <div className="flex justify-center py-20">
               <div
@@ -301,11 +292,7 @@ const SearchPage = () => {
           {!loading && !error && visibleBooks.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {visibleBooks.map(book => (
-                <BookCard
-                  key={book.id}
-                  book={book}
-                  onClick={() => navigate(`/bookdetail/${book.id}`)}
-                />
+                <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
               ))}
             </div>
           )}

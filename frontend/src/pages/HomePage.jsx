@@ -32,9 +32,6 @@ const HomePage = () => {
   const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-white">
-      {/* ===== NAVBAR ===== */}
-      <Navbar />
-
       {/* ===== HERO SECTION ===== */}
       <section className="relative overflow-hidden">
         <div className="px-6 lg:px-12 pt-12 pb-20 lg:pb-28">

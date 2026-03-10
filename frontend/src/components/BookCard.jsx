@@ -1,6 +1,6 @@
 import StarRating from "./StarRating";
 
-const BookCard = ({ book, onClick, showStatus = false }) => {
+const BookCard = ({ book, onClick, onRemove, showStatus = false }) => {
   const statusColors = {
     want_to_read: { bg: "#FEF3C7", text: "#92400E", label: "Want to read" },
     reading: { bg: "#DBEAFE", text: "#1E40AF", label: "Reading" },
@@ -38,14 +38,28 @@ const BookCard = ({ book, onClick, showStatus = false }) => {
             {status.label}
           </div>
         )}
+
+        {/* Remove button */}
+        {onRemove && (
+          <button
+            onClick={e => { e.stopPropagation(); onRemove(book) }}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 hover:bg-red-500 hover:text-white text-gray-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-sm font-bold leading-none"
+            title="Remove from shelf"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Book Info */}
       <h3 className="text-sm font-semibold truncate" style={{ color: "#1C1C1C" }}>
         {book.title}
       </h3>
-      <p className="text-xs text-gray-500 mb-1.5">{book.author}</p>
+      <p className="text-xs text-gray-500 mb-1">{book.author}</p>
       <StarRating rating={book.rating || 0} size={12} />
+      {book.review && (
+        <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic">"{book.review}"</p>
+      )}
     </div>
   );
 };
