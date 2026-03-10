@@ -40,7 +40,7 @@ const BookDetailPage = () => {
     setError(null)
     apiFetch('/api/books/' + id)
       .then(data => {
-        if (!cancelled) setBook(fromDB(data.book))
+        if (!cancelled) setBook(mapBookFromAPI(data.book))
       })
       .catch(err => {
         if (!cancelled) setError(err.message)
