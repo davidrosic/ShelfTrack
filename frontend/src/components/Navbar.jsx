@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { SearchIcon } from './Icons'
 import { useAuth } from '../context/AuthContext'
-
-const OL_SEARCH = 'https://openlibrary.org/search.json'
+import { API_URL } from '../config'
 
 const SearchBox = () => {
   const navigate = useNavigate()
@@ -12,7 +11,7 @@ const SearchBox = () => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
 
-  // Debounced fetch
+  // Debounced fetch - uses backend universal search
   useEffect(() => {
     const q = value.trim()
     if (q.length < 2) {
@@ -23,11 +22,13 @@ const SearchBox = () => {
 
     const timer = setTimeout(async () => {
       try {
+        // Use backend universal search with auto source
         const res = await fetch(
-          `${OL_SEARCH}?q=${encodeURIComponent(q)}&limit=6&fields=key,title,author_name,cover_i`
+          `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=6&source=auto`
         )
         const data = await res.json()
-        setSuggestions(data.docs || [])
+        // Map backend response to suggestion format
+        setSuggestions(data.books || [])
         setOpen(true)
       } catch {
         setSuggestions([])
@@ -57,17 +58,19 @@ const SearchBox = () => {
     }
   }
 
-  const handlePick = doc => {
-    const olId = doc.key.split('/').pop()
-    const book = {
-      id: olId,
-      title: doc.title,
-      author: doc.author_name?.[0] || 'Unknown Author',
-      coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
+  const handlePick = book => {
+    // book.id is open_library_id for external books, or book_id for local
+    const id = book.open_library_id || book.book_id
+    const bookData = {
+      id: id,
+      title: book.title,
+      author: book.author,
+      coverUrl: book.cover_url,
+      firstPublishYear: book.first_publish_year,
     }
     setValue('')
     setOpen(false)
-    navigate(`/bookdetail/${olId}`, { state: { book } })
+    navigate(`/bookdetail/${id}`, { state: { book: bookData } })
   }
 
   return (
@@ -89,16 +92,16 @@ const SearchBox = () => {
 
       {open && suggestions.length > 0 && (
         <ul className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg z-50 overflow-hidden">
-          {suggestions.map(doc => (
-            <li key={doc.key}>
+          {suggestions.map(book => (
+            <li key={book.open_library_id || book.book_id}>
               <button
                 type="button"
-                onMouseDown={() => handlePick(doc)}
+                onMouseDown={() => handlePick(book)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left"
               >
-                {doc.cover_i ? (
+                {book.cover_url ? (
                   <img
-                    src={`https://covers.openlibrary.org/b/id/${doc.cover_i}-S.jpg`}
+                    src={book.cover_url.replace('-M.jpg', '-S.jpg')}
                     alt=""
                     className="w-8 h-11 object-cover rounded shrink-0"
                   />
@@ -106,9 +109,9 @@ const SearchBox = () => {
                   <div className="w-8 h-11 rounded shrink-0 bg-gray-100" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{doc.title}</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">{book.title}</p>
                   <p className="text-xs text-gray-400 truncate">
-                    {doc.author_name?.[0] || 'Unknown Author'}
+                    {book.author || 'Unknown Author'}
                   </p>
                 </div>
               </button>

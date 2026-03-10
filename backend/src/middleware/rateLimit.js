@@ -24,6 +24,10 @@
 
 import rateLimit from "express-rate-limit";
 
+// Disable IPv6 keyGenerator fallback validation - we intentionally use a custom
+// keyGenerator that prioritizes user_id for authenticated users
+const validateConfig = { keyGeneratorIpFallback: false };
+
 /**
  * Determine if rate limiting should be skipped
  * Skipped in development unless explicitly enabled
@@ -115,6 +119,7 @@ export const writeLimiter = rateLimit({
   max: 30, // 30 write operations per minute
   skip: shouldSkip,
   keyGenerator: generateKey, // Per-user limiting
+  validate: validateConfig,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -135,12 +140,34 @@ export const readLimiter = rateLimit({
   max: 100, // 100 reads per minute
   skip: shouldSkip,
   keyGenerator: generateKey, // Per-user limiting for authenticated requests
+  validate: validateConfig,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
     res.status(429).json({
       error: "RateLimitError",
       message: "Too many requests. Please slow down.",
+    });
+  },
+});
+
+/**
+ * External search rate limiter
+ * Stricter limits since it hits external API (Open Library)
+ * Applies to: GET /api/books/search-universal with source=external
+ */
+export const externalSearchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 external searches per minute (OL API is rate limited)
+  skip: shouldSkip,
+  keyGenerator: generateKey, // Per-user limiting
+  validate: validateConfig,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: "RateLimitError",
+      message: "External search rate limit exceeded. Please slow down.",
     });
   },
 });

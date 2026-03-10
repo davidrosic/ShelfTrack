@@ -209,6 +209,142 @@ export class Book {
       isCustom: false,
     });
   }
+
+  /**
+   * Search books from Open Library API
+   * Fetches from external API and caches results in local database
+   *
+   * @param {string} searchTerm - Search query
+   * @param {Object} [options]
+   * @param {number} [options.limit=20] - Max results to return
+   * @param {number} [options.offset=0] - Pagination offset for OL API
+   * @param {string} [options.subject] - Optional subject filter
+   * @returns {Promise<Array>} Books from Open Library (cached to local DB)
+   */
+  static async searchExternal(searchTerm, { limit = 20, offset = 0, subject = null } = {}) {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      return [];
+    }
+
+    const OL_API = "https://openlibrary.org/search.json";
+    const fields = "key,title,author_name,first_publish_year,cover_i";
+    
+    let url = `${OL_API}?q=${encodeURIComponent(searchTerm.trim())}&limit=${limit}&offset=${offset}&fields=${fields}`;
+    if (subject) {
+      url += `&subject=${encodeURIComponent(subject)}`;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Open Library API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const docs = data.docs || [];
+
+    // Cache results to local database (fire and forget - don't await)
+    const cachePromises = docs.map(async (doc) => {
+      try {
+        // Only cache if it has minimum required data
+        if (doc.key && doc.title) {
+          await this.getOrCreateFromOpenLibrary(doc);
+        }
+      } catch (err) {
+        // Log but don't fail the search if caching fails
+        console.warn(`[Book] Failed to cache OL result ${doc.key}:`, err.message);
+      }
+    });
+
+    // Return formatted results immediately, cache in background
+    const results = docs.map((doc) => ({
+      book_id: null, // External books don't have local ID yet
+      open_library_id: doc.key.split("/").pop(),
+      title: doc.title || "Unknown Title",
+      author: doc.author_name?.[0] || "Unknown Author",
+      cover_url: doc.cover_i
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+        : null,
+      first_publish_year: doc.first_publish_year || null,
+      is_custom: false,
+      source: "external", // Mark as external result
+    }));
+
+    // Fire caching in background
+    Promise.all(cachePromises).catch(() => {});
+
+    return results;
+  }
+
+  /**
+   * Universal search - combines local and external results
+   * 
+   * @param {string} searchTerm - Search query
+   * @param {Object} [options]
+   * @param {number} [options.limit=20] - Max total results
+   * @param {number} [options.localLimit=20] - Max local results
+   * @param {string} [options.source='auto'] - 'local', 'external', or 'auto'
+   * @param {number} [options.offset=0] - Offset for external pagination
+   * @param {string} [options.subject] - Optional subject filter
+   * @returns {Promise<Object>} { books: Array, source: string, hasMore: boolean }
+   */
+  static async searchUniversal(searchTerm, { 
+    limit = 20, 
+    localLimit = 20,
+    source = 'auto',
+    offset = 0,
+    subject = null 
+  } = {}) {
+    // Source: 'local' - only search local DB
+    if (source === 'local') {
+      const books = await this.search(searchTerm, { limit: localLimit });
+      return { 
+        books: books.map(b => ({ ...b, source: 'local' })), 
+        source: 'local',
+        hasMore: false 
+      };
+    }
+
+    // Source: 'external' - only search OpenLibrary
+    if (source === 'external') {
+      const books = await this.searchExternal(searchTerm, { limit, offset, subject });
+      return { 
+        books, 
+        source: 'external',
+        hasMore: books.length === limit 
+      };
+    }
+
+    // Source: 'auto' - search local first, supplement with external if needed
+    const localBooks = await this.search(searchTerm, { limit: localLimit });
+    
+    // If we have enough local results, return them
+    if (localBooks.length >= limit) {
+      return { 
+        books: localBooks.slice(0, limit).map(b => ({ ...b, source: 'local' })), 
+        source: 'local',
+        hasMore: localBooks.length >= localLimit 
+      };
+    }
+
+    // Supplement with external results
+    const remainingNeeded = limit - localBooks.length;
+    const externalBooks = await this.searchExternal(searchTerm, { 
+      limit: remainingNeeded, 
+      subject 
+    });
+
+    // Combine results, marking sources
+    const combined = [
+      ...localBooks.map(b => ({ ...b, source: 'local' })),
+      ...externalBooks
+    ];
+
+    return { 
+      books: combined, 
+      source: 'mixed',
+      hasMore: externalBooks.length === remainingNeeded 
+    };
+  }
 }
 
 export default Book;
