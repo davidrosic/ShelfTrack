@@ -74,9 +74,18 @@ app.use(helmet());
  * CORS: Cross-Origin Resource Sharing
  * Allow frontend to communicate with API
  */
+const corsOrigin = process.env.NODE_ENV === 'production'
+  ? process.env.FRONTEND_URL 
+  : (process.env.FRONTEND_URL || "http://localhost:5173");
+
+if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+  console.error('[FATAL] FRONTEND_URL required in production');
+  process.exit(1);
+}
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: corsOrigin,
     credentials: true,
   })
 );
