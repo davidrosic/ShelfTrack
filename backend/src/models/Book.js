@@ -222,19 +222,45 @@ export class Book {
    * @returns {Promise<Array>} Books from Open Library (cached to local DB)
    */
   static async searchExternal(searchTerm, { limit = 20, offset = 0, subject = null } = {}) {
+    // SSRF Protection: Validate search term
+    const MAX_SEARCH_LENGTH = 200;
+    const BLOCKED_PATTERNS = /[\r\n\x00]|^(http|https|ftp|file):\/\//i;
+    
     if (!searchTerm || searchTerm.trim().length === 0) {
       return [];
     }
+    
+    if (searchTerm.length > MAX_SEARCH_LENGTH) {
+      throw new ValidationError("Search term must be between 1 and 200 characters");
+    }
+    
+    if (BLOCKED_PATTERNS.test(searchTerm)) {
+      throw new ValidationError("Invalid characters in search term");
+    }
+    
+    // Validate subject if provided
+    if (subject && (subject.length > 100 || BLOCKED_PATTERNS.test(subject))) {
+      throw new ValidationError("Invalid subject filter");
+    }
+    
+    // Validate numeric parameters
+    const validatedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
+    const validatedOffset = Math.min(Math.max(parseInt(offset, 10) || 0, 0), 10000);
 
     const OL_API = "https://openlibrary.org/search.json";
     const fields = "key,title,author_name,first_publish_year,cover_i";
     
-    let url = `${OL_API}?q=${encodeURIComponent(searchTerm.trim())}&limit=${limit}&offset=${offset}&fields=${fields}`;
+    // Use URL constructor for safer URL building
+    const url = new URL(OL_API);
+    url.searchParams.set("q", searchTerm.trim());
+    url.searchParams.set("limit", String(validatedLimit));
+    url.searchParams.set("offset", String(validatedOffset));
+    url.searchParams.set("fields", fields);
     if (subject) {
-      url += `&subject=${encodeURIComponent(subject)}`;
+      url.searchParams.set("subject", subject);
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url.toString());
     if (!response.ok) {
       throw new Error(`Open Library API error: ${response.status}`);
     }

@@ -29,9 +29,20 @@ import { User } from "../models/User.js";
 
 /**
  * JWT secret from environment
- * In production, use a strong, random secret
+ * SECURITY: Must be at least 32 characters, use strong random value in production
+ * Generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
  */
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error("[FATAL] JWT_SECRET environment variable is required");
+  process.exit(1);
+}
+
+if (JWT_SECRET.length < 32) {
+  console.error("[FATAL] JWT_SECRET must be at least 32 characters long");
+  process.exit(1);
+}
 
 /**
  * Token expiration time

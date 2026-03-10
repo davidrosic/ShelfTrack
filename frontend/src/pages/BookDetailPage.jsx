@@ -6,6 +6,7 @@ import StarRating from '../components/StarRating'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../utils/apiFetch'
 import { mapBookFromAPI } from '../utils/bookMapper'
+import { sanitizeText } from '../utils/sanitize'
 
 const STATUS_OPTIONS = [
   { value: 'want_to_read', label: 'Want to read', color: '#8B7355' },
@@ -203,7 +204,7 @@ const BookDetailPage = () => {
                 <h2 className="text-sm font-bold mb-2" style={{ color: '#1C1C1C' }}>
                   Description
                 </h2>
-                <p className="text-sm text-gray-600 leading-relaxed">{book.description}</p>
+                <p className="text-sm text-gray-600 leading-relaxed">{sanitizeText(book.description)}</p>
               </div>
             )}
 

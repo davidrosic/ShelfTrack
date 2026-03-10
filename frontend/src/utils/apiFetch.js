@@ -4,6 +4,7 @@ import { authStore } from './authStore';
 async function doFetch(path, options, accessToken) {
   const headers = {
     'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest', // CSRF protection header
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...options.headers,
   };

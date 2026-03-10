@@ -7,6 +7,7 @@ import { SearchIcon } from '../components/Icons'
 import { apiFetch } from '../utils/apiFetch'
 import { useAuth } from '../context/AuthContext'
 import { mapBookFromAPI, mapBookForNavigation } from '../utils/bookMapper'
+import { sanitizeBookId } from '../utils/sanitize'
 
 const CATEGORIES = [
   'All',
@@ -124,7 +125,12 @@ const SearchPage = () => {
   })
 
   const handleBookClick = book => {
-    navigate(`/bookdetail/${book.id}`, { state: { book: mapBookForNavigation(book) } })
+    const sanitizedId = sanitizeBookId(book.id)
+    if (!sanitizedId) {
+      console.error('Invalid book ID:', book.id)
+      return
+    }
+    navigate(`/bookdetail/${sanitizedId}`, { state: { book: mapBookForNavigation(book) } })
   }
 
   // Load more results from external source

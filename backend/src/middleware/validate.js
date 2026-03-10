@@ -118,7 +118,11 @@ export function validateBody(schema) {
         // Pattern validation
         if (rules.pattern && !rules.pattern.test(value)) {
           errors[field] = errors[field] || [];
-          errors[field].push(`${field} format is invalid`);
+          if (field === 'password') {
+            errors[field].push("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)");
+          } else {
+            errors[field].push(`${field} format is invalid`);
+          }
         }
       }
     }
@@ -219,7 +223,13 @@ export const schemas = {
       fields: {
         email: { type: "email", required: true },
         username: { type: "string", min: 3, max: 50, required: true },
-        password: { type: "string", min: 8, max: 255, required: true },
+        password: { 
+          type: "string", 
+          min: 8, 
+          max: 255, 
+          required: true,
+          pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/
+        },
         firstName: { type: "string", min: 1, max: 100, required: true },
         lastName: { type: "string", min: 1, max: 100, required: true },
         dateOfBirth: { type: "date" },

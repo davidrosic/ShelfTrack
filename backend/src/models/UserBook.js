@@ -172,8 +172,15 @@ export class UserBook {
     }
 
     sql += ` ORDER BY ub.updated_at DESC`;
+    
+    // Validate and sanitize pagination parameters
+    const MAX_LIMIT = 100;
+    const MAX_OFFSET = 100000;
+    const validatedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), MAX_LIMIT);
+    const validatedOffset = Math.min(Math.max(parseInt(offset, 10) || 0, 0), MAX_OFFSET);
+    
     sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(Math.min(parseInt(limit, 10) || 50, 100), parseInt(offset, 10) || 0);
+    params.push(validatedLimit, validatedOffset);
 
     const result = await query(sql, params);
     return result.rows;
