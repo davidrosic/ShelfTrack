@@ -120,10 +120,14 @@ export class Book {
     const maxResults = Math.min(parseInt(limit, 10) || 20, 100); // Cap at 100
 
     const result = await query(
-      `SELECT book_id, open_library_id, title, author, cover_url, first_publish_year, is_custom, created_at
-       FROM books 
-       WHERE title ILIKE $1 OR author ILIKE $1
-       ORDER BY title
+      `SELECT b.book_id, b.open_library_id, b.title, b.author, b.cover_url, b.first_publish_year, b.is_custom, b.created_at,
+              ROUND(AVG(ub.rating)::numeric, 1) AS average_rating,
+              COUNT(ub.rating) AS rating_count
+       FROM books b
+       LEFT JOIN user_books ub ON b.book_id = ub.book_id AND ub.rating IS NOT NULL
+       WHERE b.title ILIKE $1 OR b.author ILIKE $1
+       GROUP BY b.book_id, b.open_library_id, b.title, b.author, b.cover_url, b.first_publish_year, b.is_custom, b.created_at
+       ORDER BY b.title
        LIMIT $2`,
       [term, maxResults],
     );

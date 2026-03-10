@@ -294,6 +294,25 @@ export class UserBook {
   }
 
   /**
+   * Find a user's shelf entry for a specific book by Open Library ID
+   *
+   * @param {number} userId
+   * @param {string} openLibraryId
+   * @returns {Promise<Object|null>}
+   */
+  static async findByOpenLibraryId(userId, openLibraryId) {
+    const result = await query(
+      `SELECT ub.user_book_id, ub.status, ub.rating, ub.review, ub.notes,
+              b.book_id, b.open_library_id
+       FROM user_books ub
+       JOIN books b ON ub.book_id = b.book_id
+       WHERE ub.user_id = $1 AND b.open_library_id = $2`,
+      [userId, openLibraryId],
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Get reading statistics for a user
    *
    * @param {number} userId

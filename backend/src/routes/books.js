@@ -58,12 +58,13 @@ router.post("/", validateBody(schemas.book.create), async (req, res, next) => {
 });
 
 /**
- * GET /api/books/search?q=query&limit=20
- * Search books by title or author
+ * GET /api/books/search?q=query&limit=20&subject=fiction
+ * Search books: DB results first (with avg ratings), then supplement with OpenLibrary API.
+ * Subject filter is forwarded to OpenLibrary; DB results are always by title/author only.
  */
 router.get("/search", async (req, res, next) => {
   try {
-    const { q, limit = 20 } = req.query;
+    const { q, limit = 20, subject } = req.query;
 
     if (!q || q.trim().length === 0) {
       return res.status(400).json({
@@ -72,12 +73,55 @@ router.get("/search", async (req, res, next) => {
       });
     }
 
-    const books = await Book.search(q, { limit: parseInt(limit, 10) || 20 });
+    const limitNum = Math.min(parseInt(limit, 10) || 20, 100);
+
+    // 1. Search local DB (includes average_rating aggregated from user_books)
+    const dbBooks = await Book.search(q, { limit: limitNum });
+    const dbOlIds = new Set(dbBooks.filter(b => b.open_library_id).map(b => b.open_library_id));
+
+    // 2. Fetch from OpenLibrary API to supplement DB results
+    let olBooks = [];
+    try {
+      const olUrl = new URL("https://openlibrary.org/search.json");
+      olUrl.searchParams.set("q", q);
+      olUrl.searchParams.set("limit", String(limitNum));
+      olUrl.searchParams.set("fields", "key,title,author_name,first_publish_year,cover_i");
+      if (subject) olUrl.searchParams.set("subject", subject);
+
+      const olRes = await fetch(olUrl.toString());
+      if (olRes.ok) {
+        const olData = await olRes.json();
+        olBooks = (olData.docs || [])
+          .filter(doc => {
+            const olId = doc.key?.split("/").pop();
+            return olId && !dbOlIds.has(olId);
+          })
+          .map(doc => ({
+            open_library_id: doc.key.split("/").pop(),
+            title: doc.title || "Unknown Title",
+            author: doc.author_name?.[0] || "Unknown Author",
+            cover_url: doc.cover_i
+              ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+              : null,
+            first_publish_year: doc.first_publish_year || null,
+            average_rating: null,
+            rating_count: "0",
+            source: "api",
+          }));
+      }
+    } catch {
+      // OL fetch failed — return DB results only
+    }
+
+    const combined = [
+      ...dbBooks.map(b => ({ ...b, source: "db" })),
+      ...olBooks,
+    ];
 
     res.json({
       query: q,
-      count: books.length,
-      books,
+      count: combined.length,
+      books: combined,
     });
   } catch (err) {
     next(err);

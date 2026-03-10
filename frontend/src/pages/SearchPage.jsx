@@ -5,7 +5,7 @@ import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { SearchIcon } from '../components/Icons'
 
-const OL_SEARCH = 'https://openlibrary.org/search.json'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 const CATEGORIES = [
   'All',
@@ -51,7 +51,8 @@ const SearchPage = () => {
     setError(null)
 
     const subject = CATEGORY_SUBJECTS[selectedCategory]
-    const url = `${OL_SEARCH}?q=${encodeURIComponent(q)}&limit=50&fields=key,title,author_name,first_publish_year,cover_i${subject ? `&subject=${subject}` : ''}`
+    let url = `${API_URL}/api/books/search?q=${encodeURIComponent(q)}&limit=50`
+    if (subject) url += `&subject=${subject}`
 
     fetch(url)
       .then(r => {
@@ -61,19 +62,16 @@ const SearchPage = () => {
       .then(data => {
         if (!cancelled) {
           setBooks(
-            (data.docs || []).map(doc => {
-              const olId = doc.key.split('/').pop()
-              return {
-                id: olId,
-                title: doc.title || 'Unknown Title',
-                author: doc.author_name?.[0] || 'Unknown Author',
-                coverUrl: doc.cover_i
-                  ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
-                  : null,
-                firstPublishYear: doc.first_publish_year || null,
-                rating: null,
-              }
-            })
+            (data.books || []).map(b => ({
+              id: b.open_library_id || String(b.book_id),
+              olId: b.open_library_id,
+              title: b.title,
+              author: b.author,
+              coverUrl: b.cover_url,
+              firstPublishYear: b.first_publish_year || null,
+              rating: b.average_rating ? parseFloat(b.average_rating) : 0,
+              source: b.source,
+            }))
           )
         }
       })

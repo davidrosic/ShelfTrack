@@ -13,6 +13,8 @@ const STATUS_TABS = [
   { value: 'read', label: 'Finished' },
 ]
 
+const RATINGS = ['All', '5', '4', '3', '2', '1']
+
 const MyBooksPage = () => {
   const navigate = useNavigate()
   const { accessToken } = useAuth()
@@ -21,6 +23,18 @@ const MyBooksPage = () => {
   const [counts, setCounts] = useState({ all: 0, want_to_read: 0, reading: 0, read: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const [filterTitle, setFilterTitle] = useState('')
+  const [filterAuthor, setFilterAuthor] = useState('')
+  const [filterYear, setFilterYear] = useState('')
+  const [filterRating, setFilterRating] = useState('All')
+
+  const resetFilters = () => {
+    setFilterTitle('')
+    setFilterAuthor('')
+    setFilterYear('')
+    setFilterRating('All')
+  }
 
   const loadStats = useCallback(() => {
     apiFetch('/api/user-books/stats', {}, accessToken)
@@ -68,7 +82,13 @@ const MyBooksPage = () => {
     loadShelf()
   }, [loadShelf])
 
-  const filteredBooks = books
+  const filteredBooks = books.filter(book => {
+    if (filterTitle && !book.title.toLowerCase().includes(filterTitle.toLowerCase())) return false
+    if (filterAuthor && !book.author.toLowerCase().includes(filterAuthor.toLowerCase())) return false
+    if (filterYear && book.firstPublishYear && book.firstPublishYear < parseInt(filterYear)) return false
+    if (filterRating !== 'All' && (book.rating || 0) < parseInt(filterRating)) return false
+    return true
+  })
 
   const handleRemove = book => {
     apiFetch(`/api/user-books/${book.userBookId}`, { method: 'DELETE' }, accessToken)
@@ -147,6 +167,93 @@ const MyBooksPage = () => {
           >
             + Add Books
           </button>
+
+          {/* Filters */}
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold" style={{ color: '#1C1C1C' }}>Filter</span>
+              <button
+                onClick={resetFilters}
+                className="text-xs font-medium hover:underline"
+                style={{ color: '#D4A574' }}
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Title */}
+            <div>
+              <div className="text-xs font-bold text-white px-3 py-2 rounded-t-lg" style={{ backgroundColor: '#8B7355' }}>
+                Title
+              </div>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
+                <input
+                  type="text"
+                  placeholder="Search title..."
+                  value={filterTitle}
+                  onChange={e => setFilterTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+                />
+              </div>
+            </div>
+
+            {/* Author */}
+            <div>
+              <div className="text-xs font-bold text-white px-3 py-2 rounded-t-lg" style={{ backgroundColor: '#8B7355' }}>
+                Author
+              </div>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
+                <input
+                  type="text"
+                  placeholder="Search author..."
+                  value={filterAuthor}
+                  onChange={e => setFilterAuthor(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+                />
+              </div>
+            </div>
+
+            {/* Year published from */}
+            <div>
+              <div className="text-xs font-bold text-white px-3 py-2 rounded-t-lg" style={{ backgroundColor: '#8B7355' }}>
+                Published from year
+              </div>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
+                <input
+                  type="number"
+                  placeholder="e.g. 2000"
+                  value={filterYear}
+                  onChange={e => setFilterYear(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+                  min="0"
+                  max="2100"
+                />
+              </div>
+            </div>
+
+            {/* Rating */}
+            <div>
+              <div className="text-xs font-bold text-white px-3 py-2 rounded-t-lg" style={{ backgroundColor: '#8B7355' }}>
+                Min. rating
+              </div>
+              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
+                {RATINGS.map(r => (
+                  <label key={r} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="mybooks-rating"
+                      checked={filterRating === r}
+                      onChange={() => setFilterRating(r)}
+                      className="w-3.5 h-3.5 accent-amber-700"
+                    />
+                    <span className="text-xs text-gray-600">
+                      {r === 'All' ? 'All' : `${r} star${r !== '1' ? 's' : ''} & up`}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
         </aside>
 
         <main className="flex-1">

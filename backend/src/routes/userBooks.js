@@ -134,6 +134,30 @@ router.get("/stats", async (req, res, next) => {
 });
 
 /**
+ * GET /api/user-books/by-ol/:olId
+ * Get the current user's shelf entry for a book by its Open Library ID
+ */
+router.get("/by-ol/:olId", async (req, res, next) => {
+  try {
+    const userId = req.user.user_id;
+    const { olId } = req.params;
+
+    const entry = await UserBook.findByOpenLibraryId(userId, olId);
+
+    if (!entry) {
+      return res.status(404).json({
+        error: "NotFoundError",
+        message: "Book not on your shelf",
+      });
+    }
+
+    res.json({ entry });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * PATCH /api/user-books/:id/status
  * Update reading status for a shelf entry
  */

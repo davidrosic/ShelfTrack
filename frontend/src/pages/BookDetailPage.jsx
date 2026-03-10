@@ -64,7 +64,30 @@ const BookDetailPage = () => {
     }
   }, [id, state])
 
+  // Once book is known and user is logged in, fetch their existing shelf entry
+  useEffect(() => {
+    if (!accessToken || !book?.olId) return
+    let cancelled = false
+    apiFetch(`/api/user-books/by-ol/${book.olId}`, {}, accessToken)
+      .then(data => {
+        if (cancelled) return
+        const e = data.entry
+        setSelectedStatus(e.status)
+        setUserRating(e.rating || 0)
+        setReviewText(e.review || '')
+        if (e.review) setShowReviewForm(true)
+      })
+      .catch(() => {
+        // 404 = not on shelf yet, nothing to pre-populate
+      })
+    return () => { cancelled = true }
+  }, [accessToken, book?.olId])
+
   const handleSave = async () => {
+    if (!accessToken) {
+      navigate('/signin')
+      return
+    }
     if (!selectedStatus) return
     setSaveError(null)
     setSaving(true)
