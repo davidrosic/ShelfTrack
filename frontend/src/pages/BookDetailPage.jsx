@@ -5,24 +5,13 @@ import Footer from '../components/Footer'
 import StarRating from '../components/StarRating'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../utils/apiFetch'
+import { mapBookFromAPI } from '../utils/bookMapper'
 
 const STATUS_OPTIONS = [
   { value: 'want_to_read', label: 'Want to read', color: '#8B7355' },
   { value: 'reading', label: 'Currently reading', color: '#2563EB' },
   { value: 'read', label: 'Read', color: '#059669' },
 ]
-
-// Normalize a raw DB book record to the shape this page uses
-function fromDB(raw) {
-  return {
-    olId: raw.open_library_id || null,
-    title: raw.title,
-    author: raw.author,
-    coverUrl: raw.cover_url,
-    firstPublishYear: raw.first_publish_year,
-    description: raw.description || null,
-  }
-}
 
 const BookDetailPage = () => {
   const navigate = useNavigate()
@@ -66,9 +55,9 @@ const BookDetailPage = () => {
 
   // Once book is known and user is logged in, fetch their existing shelf entry
   useEffect(() => {
-    if (!accessToken || !book?.olId) return
+    if (!accessToken || !book?.openLibraryId) return
     let cancelled = false
-    apiFetch(`/api/user-books/by-ol/${book.olId}`, {}, accessToken)
+    apiFetch(`/api/user-books/by-ol/${book.openLibraryId}`, {}, accessToken)
       .then(data => {
         if (cancelled) return
         const e = data.entry
@@ -81,7 +70,7 @@ const BookDetailPage = () => {
         // 404 = not on shelf yet, nothing to pre-populate
       })
     return () => { cancelled = true }
-  }, [accessToken, book?.olId])
+  }, [accessToken, book?.openLibraryId])
 
   const handleSave = async () => {
     if (!accessToken) {
@@ -98,7 +87,7 @@ const BookDetailPage = () => {
         {
           method: 'POST',
           body: JSON.stringify({
-            openLibraryId: book.olId || book.id,
+            openLibraryId: book.openLibraryId || book.id,
             title: book.title,
             author: book.author,
             coverUrl: book.coverUrl,
