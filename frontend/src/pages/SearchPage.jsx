@@ -4,7 +4,8 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { SearchIcon } from '../components/Icons'
-import { API_URL } from '../config'
+import { apiFetch } from '../utils/apiFetch'
+import { useAuth } from '../context/AuthContext'
 
 const CATEGORIES = [
   'All',
@@ -27,6 +28,7 @@ const RATINGS = ['All', '5 stars', '4 stars', '3 stars', '2 stars', '1 star']
 const SearchPage = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { accessToken } = useAuth()
   const q = searchParams.get('q') || ''
 
   const [inputValue, setInputValue] = useState(q)
@@ -60,32 +62,27 @@ const SearchPage = () => {
     setOffset(0)
 
     const subject = CATEGORY_SUBJECTS[selectedCategory]
-    const url = `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=48&source=${searchSource}${subject ? `&subject=${subject}` : ''}`
+    const path = `/api/books/search-universal?q=${encodeURIComponent(q)}&limit=48&source=${searchSource}${subject ? `&subject=${subject}` : ''}`
 
-    fetch(url)
-      .then(r => {
-        if (!r.ok) throw new Error('Search failed')
-        return r.json()
-      })
+    apiFetch(path, {}, accessToken)
       .then(data => {
-        if (!cancelled) {
-          setBooks(
-            (data.books || []).map(book => ({
-              id: book.open_library_id || book.book_id,
-              bookId: book.book_id, // Local ID if exists
-              openLibraryId: book.open_library_id,
-              title: book.title || 'Unknown Title',
-              author: book.author || 'Unknown Author',
-              coverUrl: book.cover_url,
-              firstPublishYear: book.first_publish_year || null,
-              averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
-              ratingCount: parseInt(book.rating_count, 10) || 0,
-              source: book.source,
-            }))
-          )
-          setHasMore(data.hasMore)
-          setOffset(data.books?.length || 0)
-        }
+        if (cancelled) return
+        setBooks(
+          (data.books || []).map(book => ({
+            id: book.open_library_id || book.book_id,
+            bookId: book.book_id, // Local ID if exists
+            openLibraryId: book.open_library_id,
+            title: book.title || 'Unknown Title',
+            author: book.author || 'Unknown Author',
+            coverUrl: book.cover_url,
+            firstPublishYear: book.first_publish_year || null,
+            averageRating: book.average_rating ? parseFloat(book.average_rating) : null,
+            ratingCount: parseInt(book.rating_count, 10) || 0,
+            source: book.source,
+          }))
+        )
+        setHasMore(data.hasMore)
+        setOffset(data.books?.length || 0)
       })
       .catch(err => {
         if (!cancelled) setError(err.message)
@@ -141,12 +138,10 @@ const SearchPage = () => {
     setError(null)
 
     const subject = CATEGORY_SUBJECTS[selectedCategory]
-    const url = `${API_URL}/api/books/search-universal?q=${encodeURIComponent(q)}&limit=24&source=external&offset=${offset}${subject ? `&subject=${subject}` : ''}`
+    const path = `/api/books/search-universal?q=${encodeURIComponent(q)}&limit=24&source=external&offset=${offset}${subject ? `&subject=${subject}` : ''}`
 
     try {
-      const r = await fetch(url)
-      if (!r.ok) throw new Error('Failed to load more')
-      const data = await r.json()
+      const data = await apiFetch(path, {}, accessToken)
 
       const newBooks = (data.books || []).map(book => ({
         id: book.open_library_id || book.book_id,
