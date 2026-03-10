@@ -349,7 +349,7 @@ const SearchPage = () => {
           {!loading && !error && visibleBooks.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {visibleBooks.map(book => (
-                <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
+                <BookCard key={`${book.source}-${book.id}`} book={book} onClick={() => handleBookClick(book)} />
               ))}
             </div>
           )}
