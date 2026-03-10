@@ -14,16 +14,6 @@ const categories = [
   { name: 'Health', count: 600, color: '#C4B896' },
 ]
 
-const featuredAuthors = [
-  { name: 'Jonathan Rivera', color: '#D4A574' },
-  { name: 'Samuel Thompson', color: '#8B7355' },
-  { name: 'Michael Collins', color: '#C4956A' },
-  { name: 'Benjamin Parker', color: '#6B5B3E' },
-  { name: 'David Lewis', color: '#E8D5B7' },
-  { name: 'Ava Robinson', color: '#A68B6B' },
-  { name: 'Joachim Rivera', color: '#7A6548' },
-]
-
 // Pick `n` random items from an array
 const pickRandom = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0, n)
 
