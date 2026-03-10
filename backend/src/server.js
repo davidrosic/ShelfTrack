@@ -34,6 +34,7 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 // Import routes
+import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import bookRoutes from "./routes/books.js";
 import userBookRoutes from "./routes/userBooks.js";
@@ -119,6 +120,7 @@ app.get("/health", (req, res) => {
 // API ROUTES
 // ============================================
 
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/user-books", userBookRoutes);
