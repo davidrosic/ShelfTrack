@@ -51,12 +51,26 @@ CREATE TABLE IF NOT EXISTS user_books (
 );
 
 -- ============================================
+-- REFRESH TOKENS (for secure token rotation)
+-- ============================================
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_user_books_user_id ON user_books(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_books_book_id ON user_books(book_id);
 CREATE INDEX IF NOT EXISTS idx_user_books_status ON user_books(status);
 CREATE INDEX IF NOT EXISTS idx_books_open_library_id ON books(open_library_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 
 -- ============================================
 -- AUTO-UPDATE TRIGGER FOR updated_at
