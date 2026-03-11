@@ -8,6 +8,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null);
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const refreshTimerRef = useRef(null);
   const silentRefreshRef = useRef(null);
 
@@ -24,6 +25,22 @@ export function AuthProvider({ children }) {
       }
       const data = await res.json();
       setAccessToken(data.token);
+      // Restore user profile after getting a fresh token
+      try {
+        const meRes = await fetch(`${API_URL}/api/users/me`, {
+          headers: {
+            Authorization: `Bearer ${data.token}`,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'include',
+        });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          setUser(meData.user ?? meData);
+        }
+      } catch {
+        // Non-critical — user data is nice to have but token is enough for auth
+      }
       // Schedule next silent refresh 5 minutes before the 15-min access token expires
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = setTimeout(() => silentRefreshRef.current?.(), 10 * 60 * 1000);
@@ -32,6 +49,8 @@ export function AuthProvider({ children }) {
       setAccessToken(null);
       setUser(null);
       return null;
+    } finally {
+      setAuthLoading(false);
     }
   }, []);
 
@@ -73,7 +92,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ accessToken, user, login, logout, isLoggedIn: !!accessToken }}>
+    <AuthContext.Provider value={{ accessToken, user, login, logout, isLoggedIn: !!accessToken, authLoading }}>
       {children}
     </AuthContext.Provider>
   );

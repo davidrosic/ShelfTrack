@@ -63,7 +63,9 @@ function FloatingNav({ isLoggedIn }) {
 }
 
 export default function App() {
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, authLoading } = useAuth()
+
+  if (authLoading) return null
 
   return (
     <>
