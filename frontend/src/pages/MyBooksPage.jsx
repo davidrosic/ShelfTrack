@@ -186,8 +186,8 @@ const MyBooksPage = () => {
   )
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex px-4 sm:px-6 lg:px-12 py-6 sm:py-8 gap-8">
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex flex-1 px-4 sm:px-6 lg:px-12 py-6 sm:py-8 gap-8">
         {/* ===== SIDEBAR (Desktop) ===== */}
         <aside className="hidden lg:block w-56 shrink-0">
           <h2

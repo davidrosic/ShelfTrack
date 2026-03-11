@@ -297,8 +297,8 @@ const SearchPage = () => {
   )
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex px-4 sm:px-6 lg:px-12 py-6 sm:py-8 gap-8">
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex flex-1 px-4 sm:px-6 lg:px-12 py-6 sm:py-8 gap-8">
         {/* ===== SIDEBAR FILTERS (Desktop) ===== */}
         <aside className="hidden lg:block w-60 shrink-0">
           <div className="flex items-center justify-between mb-6">
