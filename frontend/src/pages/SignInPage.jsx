@@ -29,10 +29,10 @@ const SignInPage = () => {
     <div className="min-h-screen flex flex-col">
       <div className="flex flex-1">
         {/* Left - Light Form */}
-        <div className="flex-1 flex flex-col justify-center px-12 lg:px-20 bg-white">
+        <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-20 bg-white">
           <div className="max-w-md w-full mx-auto">
             <h1
-              className="text-4xl font-bold mb-2"
+              className="text-3xl sm:text-4xl font-bold mb-2"
               style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
             >
               Welcome back!

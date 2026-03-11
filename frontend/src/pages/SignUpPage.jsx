@@ -71,19 +71,19 @@ const SignUpPage = () => {
       <div className="flex flex-1">
         {/* Left - Dark Form */}
         <div
-          className="flex-1 flex flex-col justify-center px-12 lg:px-20"
+          className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-20"
           style={{ backgroundColor: '#1C1C1C' }}
         >
           <div className="max-w-md w-full mx-auto">
             <h1
-              className="text-4xl font-bold text-white mb-10"
+              className="text-3xl sm:text-4xl font-bold text-white mb-10"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Get Started Now
             </h1>
 
             <div className="space-y-4">
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1">
                   <label className="block text-sm text-gray-300 mb-1.5">First name</label>
                   <input
