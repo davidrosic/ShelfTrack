@@ -36,7 +36,7 @@ function FloatingNav({ isLoggedIn }) {
 
   return (
     <div
-      className="fixed top-2 left-1/2 -translate-x-1/2 z-50 flex gap-1 p-1 rounded-full shadow-lg transition-all duration-300"
+      className="fixed top-2 left-1/2 -translate-x-1/2 z-50 flex gap-0.5 sm:gap-1 p-1 rounded-full shadow-lg transition-all duration-300"
       style={{
         backgroundColor: 'rgba(28,28,28,0.9)',
         backdropFilter: 'blur(8px)',
@@ -49,7 +49,7 @@ function FloatingNav({ isLoggedIn }) {
         <button
           key={item.path}
           onClick={() => navigate(item.path)}
-          className="px-3 py-1.5 text-xs font-medium rounded-full transition-all"
+          className="px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-full transition-all"
           style={{
             backgroundColor: location.pathname === item.path ? '#8B7355' : 'transparent',
             color: location.pathname === item.path ? '#fff' : '#999',

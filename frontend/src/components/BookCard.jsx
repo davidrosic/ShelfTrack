@@ -52,8 +52,9 @@ const BookCard = ({ book, onClick, onRemove, showStatus = false, showAverageRati
         {onRemove && (
           <button
             onClick={e => { e.stopPropagation(); onRemove(book) }}
-            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 hover:bg-red-500 hover:text-white text-gray-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-sm font-bold leading-none"
+            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80 hover:bg-red-500 hover:text-white text-gray-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-base font-bold leading-none"
             title="Remove from shelf"
+            aria-label="Remove from shelf"
           >
             ×
           </button>
