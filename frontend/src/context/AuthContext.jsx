@@ -17,6 +17,7 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${API_URL}/api/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
       if (!res.ok) {
         setAccessToken(null);
@@ -82,6 +83,7 @@ export function AuthProvider({ children }) {
       await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
     } catch {
       // Proceed with client-side logout even if the server call fails
