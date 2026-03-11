@@ -27,6 +27,138 @@ const CATEGORY_SUBJECTS = {
 }
 const RATINGS = ['All', '5 stars', '4 stars', '3 stars', '2 stars', '1 star']
 
+const FilterContent = ({
+  searchSource, setSearchSource,
+  authorInput, setAuthorInput,
+  addAuthorTag, authorTags, removeAuthorTag,
+  yearFrom, setYearFrom,
+  yearTo, setYearTo,
+  selectedRating, setSelectedRating,
+}) => (
+  <div className="space-y-5">
+    {/* Search Source */}
+    <div>
+      <div
+        className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+        style={{ backgroundColor: '#8B7355' }}
+      >
+        Search Source
+      </div>
+      <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
+        {[
+          { value: 'auto', label: 'Auto (Local + External)' },
+          { value: 'local', label: 'Local Only' },
+          { value: 'external', label: 'Open Library Only' },
+        ].map(option => (
+          <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="source"
+              checked={searchSource === option.value}
+              onChange={() => setSearchSource(option.value)}
+              className="w-3.5 h-3.5 accent-amber-700"
+            />
+            <span className="text-xs text-gray-600">{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+
+    {/* Author */}
+    <div>
+      <div
+        className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+        style={{ backgroundColor: '#8B7355' }}
+      >
+        Author
+      </div>
+      <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
+        <input
+          type="text"
+          placeholder="Author's name"
+          value={authorInput}
+          onChange={e => setAuthorInput(e.target.value)}
+          onKeyDown={addAuthorTag}
+          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 mb-2"
+        />
+        {authorTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {authorTags.map(tag => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                style={{ backgroundColor: '#F5E6D3', color: '#5C4E35' }}
+              >
+                {tag}
+                <button
+                  onClick={() => removeAuthorTag(tag)}
+                  className="hover:text-red-600 font-bold leading-none"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Year published */}
+    <div>
+      <div
+        className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+        style={{ backgroundColor: '#8B7355' }}
+      >
+        Year Published
+      </div>
+      <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 flex gap-2">
+        <input
+          type="number"
+          placeholder="From"
+          value={yearFrom}
+          onChange={e => setYearFrom(e.target.value)}
+          className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+          min="0"
+          max="2100"
+        />
+        <input
+          type="number"
+          placeholder="To"
+          value={yearTo}
+          onChange={e => setYearTo(e.target.value)}
+          className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+          min="0"
+          max="2100"
+        />
+      </div>
+    </div>
+
+    {/* Rating */}
+    <div>
+      <div
+        className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+        style={{ backgroundColor: '#8B7355' }}
+      >
+        Rating
+      </div>
+      <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
+        {RATINGS.map(r => (
+          <label key={r} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="rating"
+              checked={selectedRating === r}
+              onChange={() => setSelectedRating(r)}
+              className="w-3.5 h-3.5 accent-amber-700"
+            />
+            <span className="text-xs text-gray-600">{r}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  </div>
+)
+
 const SearchPage = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -170,131 +302,6 @@ const SearchPage = () => {
     }
   }
 
-  // Filter panel content - reused for desktop sidebar and mobile drawer
-  const FilterContent = () => (
-    <div className="space-y-5">
-      {/* Search Source */}
-      <div>
-        <div
-          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-          style={{ backgroundColor: '#8B7355' }}
-        >
-          Search Source
-        </div>
-        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
-          {[
-            { value: 'auto', label: 'Auto (Local + External)' },
-            { value: 'local', label: 'Local Only' },
-            { value: 'external', label: 'Open Library Only' },
-          ].map(option => (
-            <label key={option.value} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="source"
-                checked={searchSource === option.value}
-                onChange={() => setSearchSource(option.value)}
-                className="w-3.5 h-3.5 accent-amber-700"
-              />
-              <span className="text-xs text-gray-600">{option.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Author */}
-      <div>
-        <div
-          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-          style={{ backgroundColor: '#8B7355' }}
-        >
-          Author
-        </div>
-        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
-          <input
-            type="text"
-            placeholder="Author's name"
-            value={authorInput}
-            onChange={e => setAuthorInput(e.target.value)}
-            onKeyDown={addAuthorTag}
-            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 mb-2"
-          />
-          {authorTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {authorTags.map(tag => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
-                  style={{ backgroundColor: '#F5E6D3', color: '#5C4E35' }}
-                >
-                  {tag}
-                  <button
-                    onClick={() => removeAuthorTag(tag)}
-                    className="hover:text-red-600 font-bold leading-none"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Year published */}
-      <div>
-        <div
-          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-          style={{ backgroundColor: '#8B7355' }}
-        >
-          Year Published
-        </div>
-        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 flex gap-2">
-          <input
-            type="number"
-            placeholder="From"
-            value={yearFrom}
-            onChange={e => setYearFrom(e.target.value)}
-            className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
-            min="0"
-            max="2100"
-          />
-          <input
-            type="number"
-            placeholder="To"
-            value={yearTo}
-            onChange={e => setYearTo(e.target.value)}
-            className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
-            min="0"
-            max="2100"
-          />
-        </div>
-      </div>
-
-      {/* Rating */}
-      <div>
-        <div
-          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-          style={{ backgroundColor: '#8B7355' }}
-        >
-          Rating
-        </div>
-        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
-          {RATINGS.map(r => (
-            <label key={r} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="rating"
-                checked={selectedRating === r}
-                onChange={() => setSelectedRating(r)}
-                className="w-3.5 h-3.5 accent-amber-700"
-              />
-              <span className="text-xs text-gray-600">{r}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -313,7 +320,14 @@ const SearchPage = () => {
               Reset All
             </button>
           </div>
-          <FilterContent />
+          <FilterContent
+              searchSource={searchSource} setSearchSource={setSearchSource}
+              authorInput={authorInput} setAuthorInput={setAuthorInput}
+              addAuthorTag={addAuthorTag} authorTags={authorTags} removeAuthorTag={removeAuthorTag}
+              yearFrom={yearFrom} setYearFrom={setYearFrom}
+              yearTo={yearTo} setYearTo={setYearTo}
+              selectedRating={selectedRating} setSelectedRating={setSelectedRating}
+            />
         </aside>
 
         {/* ===== MAIN CONTENT ===== */}
@@ -364,7 +378,14 @@ const SearchPage = () => {
                   Reset All
                 </button>
               </div>
-              <FilterContent />
+              <FilterContent
+              searchSource={searchSource} setSearchSource={setSearchSource}
+              authorInput={authorInput} setAuthorInput={setAuthorInput}
+              addAuthorTag={addAuthorTag} authorTags={authorTags} removeAuthorTag={removeAuthorTag}
+              yearFrom={yearFrom} setYearFrom={setYearFrom}
+              yearTo={yearTo} setYearTo={setYearTo}
+              selectedRating={selectedRating} setSelectedRating={setSelectedRating}
+            />
             </div>
           )}
 
