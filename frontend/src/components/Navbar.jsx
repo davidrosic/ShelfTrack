@@ -146,7 +146,7 @@ const Navbar = ({ showSearch = true }) => {
   const mobileMenuRef = useRef(null)
 
   const shouldShowSearch = showSearch && pathname !== '/mybooks' && pathname !== '/search'
-  
+
   const guestNav = [
     { path: '/signin', label: 'Sign In' },
     { path: '/signup', label: 'Sign Up' },
@@ -227,7 +227,7 @@ const Navbar = ({ showSearch = true }) => {
         </div>
 
         {/* Mobile Hamburger Button */}
-        <div className="sm:hidden" ref={mobileMenuRef}>
+        <div className="sm:hidden relative" ref={mobileMenuRef}>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
