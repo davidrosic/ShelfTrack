@@ -109,6 +109,14 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
+  // JSON parse errors (malformed request body)
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({
+      error: "ParseError",
+      message: "Invalid JSON in request body",
+    });
+  }
+
   // Default: Internal Server Error
   // SECURITY: Never leak error details (especially SQL errors) to client
   // Log full error server-side, return generic message to client
