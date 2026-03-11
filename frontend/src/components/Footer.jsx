@@ -10,8 +10,8 @@ const socialLinks = [
 const Footer = () => {
   return (
     <footer style={{ backgroundColor: '#1C1C1C' }}>
-      <div className="px-6 lg:px-12 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
             <span className="text-lg font-bold text-white">
@@ -76,9 +76,9 @@ const Footer = () => {
       </div>
 
       {/* Contact & Social */}
-      <div className="border-t border-gray-800 px-6 lg:px-12 py-8 text-center">
+      <div className="border-t border-gray-800 px-4 sm:px-6 lg:px-12 py-6 sm:py-8 text-center">
         <h3
-          className="text-xl font-bold text-white mb-6"
+          className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6"
           style={{ fontFamily: "'Playfair Display', serif" }}
         >
           CONTACT US
