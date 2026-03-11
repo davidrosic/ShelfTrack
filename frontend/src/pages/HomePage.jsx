@@ -25,11 +25,11 @@ const HomePage = () => {
         setBooks(pickRandom(allBooks, 8))
 
         // Extract 4 random unique authors
-        const uniqueAuthors = [...new Map(
-          allBooks
-            .filter(b => b.author && b.author !== 'Unknown Author')
-            .map(b => [b.author, b])
-        ).values()]
+        const uniqueAuthors = [
+          ...new Map(
+            allBooks.filter(b => b.author && b.author !== 'Unknown Author').map(b => [b.author, b])
+          ).values(),
+        ]
         setAuthors(pickRandom(uniqueAuthors, 4))
       })
       .catch(err => {
@@ -47,9 +47,24 @@ const HomePage = () => {
 
   // Responsive book sizes for hero section
   const bookSizes = [
-    { mobile: { w: '100px', h: '140px' }, sm: { w: '120px', h: '165px' }, md: { w: '140px', h: '190px' }, lg: { w: '180px', h: '240px' } },
-    { mobile: { w: '110px', h: '155px' }, sm: { w: '135px', h: '185px' }, md: { w: '155px', h: '215px' }, lg: { w: '200px', h: '270px' } },
-    { mobile: { w: '100px', h: '140px' }, sm: { w: '120px', h: '165px' }, md: { w: '140px', h: '190px' }, lg: { w: '180px', h: '240px' } },
+    {
+      mobile: { w: '100px', h: '140px' },
+      sm: { w: '120px', h: '165px' },
+      md: { w: '160px', h: '220px' },
+      lg: { w: '300px', h: '400px' },
+    },
+    {
+      mobile: { w: '110px', h: '155px' },
+      sm: { w: '135px', h: '185px' },
+      md: { w: '180px', h: '250px' },
+      lg: { w: '320px', h: '440px' },
+    },
+    {
+      mobile: { w: '100px', h: '140px' },
+      sm: { w: '120px', h: '165px' },
+      md: { w: '160px', h: '220px' },
+      lg: { w: '300px', h: '400px' },
+    },
   ]
 
   return (
@@ -97,8 +112,8 @@ const HomePage = () => {
             </div>
 
             {/* Right - Book covers */}
-            <div className="flex-1 flex justify-center relative w-full lg:w-auto overflow-hidden">
-              <div className="flex gap-3 sm:gap-4 items-end">
+            <div className="flex-1 flex justify-center relative w-full lg:w-auto">
+              <div className="flex gap-3 sm:gap-4 items-end p-4">
                 {[0, 1, 2].map(i => {
                   const book = heroBooks[i]
                   const sizes = bookSizes[i]
@@ -106,7 +121,7 @@ const HomePage = () => {
                     <div
                       key={i}
                       onClick={() => book && handleBookClick(book)}
-                      className="rounded-lg shadow-lg overflow-hidden cursor-pointer transition-transform hover:scale-105"
+                      className={`hero-book-${i} rounded-lg shadow-lg overflow-hidden cursor-pointer transition-transform hover:scale-105`}
                       style={{
                         width: sizes.mobile.w,
                         height: sizes.mobile.h,
@@ -127,7 +142,11 @@ const HomePage = () => {
                         }
                       `}</style>
                       {book?.coverUrl ? (
-                        <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                        <img
+                          src={book.coverUrl}
+                          alt={book.title}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex items-end justify-center p-2 sm:p-3">
                           <p className="text-[10px] sm:text-xs font-semibold text-white drop-shadow text-center">
@@ -145,14 +164,28 @@ const HomePage = () => {
 
         {/* Colorful gradient band */}
         <div className="w-full h-12 sm:h-16 flex">
-          {['#E74C3C','#E67E22','#F1C40F','#2ECC71','#3498DB','#9B59B6','#E74C3C','#E67E22','#F1C40F','#2ECC71'].map((c, i) => (
+          {[
+            '#E74C3C',
+            '#E67E22',
+            '#F1C40F',
+            '#2ECC71',
+            '#3498DB',
+            '#9B59B6',
+            '#E74C3C',
+            '#E67E22',
+            '#F1C40F',
+            '#2ECC71',
+          ].map((c, i) => (
             <div key={i} className="flex-1 h-full" style={{ backgroundColor: c, opacity: 0.85 }} />
           ))}
         </div>
       </section>
 
       {/* ===== AWARD-WINNING BOOKS ===== */}
-      <section className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16" style={{ backgroundColor: '#FAFAFA' }}>
+      <section
+        className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16"
+        style={{ backgroundColor: '#FAFAFA' }}
+      >
         <div className="mb-6 text-center">
           <h2
             className="text-base sm:text-lg font-bold mb-6"
@@ -165,10 +198,7 @@ const HomePage = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
             {books.map((book, i) => (
               <div key={book.id} className={i >= 2 ? 'hidden sm:block' : ''}>
-                <BookCard
-                  book={book}
-                  onClick={() => handleBookClick(book)}
-                />
+                <BookCard book={book} onClick={() => handleBookClick(book)} />
               </div>
             ))}
           </div>
@@ -212,7 +242,10 @@ const HomePage = () => {
       </section>
 
       {/* ===== TESTIMONIAL ===== */}
-      <section className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16 text-center" style={{ backgroundColor: '#F5F0EB' }}>
+      <section
+        className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16 text-center"
+        style={{ backgroundColor: '#F5F0EB' }}
+      >
         <div
           className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mx-auto mb-4 sm:mb-6"
           style={{ backgroundColor: '#D4A574' }}
