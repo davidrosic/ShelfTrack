@@ -163,12 +163,13 @@ const HomePage = () => {
         </div>
         {books.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
-            {books.map(book => (
-              <BookCard
-                key={book.id}
-                book={book}
-                onClick={() => handleBookClick(book)}
-              />
+            {books.map((book, i) => (
+              <div key={book.id} className={i >= 2 ? 'hidden sm:block' : ''}>
+                <BookCard
+                  book={book}
+                  onClick={() => handleBookClick(book)}
+                />
+              </div>
             ))}
           </div>
         ) : (
