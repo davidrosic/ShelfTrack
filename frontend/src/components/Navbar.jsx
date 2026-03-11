@@ -91,7 +91,7 @@ const SearchBox = () => {
           onChange={e => setValue(e.target.value)}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Need help finding your book?"
-          className="ml-2 flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 focus:outline-none"
+          className="ml-2 flex-1 bg-transparent text-sm text-gray-600 placeholder-gray-400 focus:outline-none min-w-0"
         />
       </form>
 
@@ -142,7 +142,11 @@ const Navbar = ({ showSearch = true }) => {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { isLoggedIn, logout } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuRef = useRef(null)
+
   const shouldShowSearch = showSearch && pathname !== '/mybooks' && pathname !== '/search'
+  
   const guestNav = [
     { path: '/signin', label: 'Sign In' },
     { path: '/signup', label: 'Sign Up' },
@@ -163,10 +167,38 @@ const Navbar = ({ showSearch = true }) => {
 
   const navItems = isLoggedIn ? loggedInNav : guestNav
 
+  // Close mobile menu on outside click
+  useEffect(() => {
+    const handler = e => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    if (mobileMenuOpen) {
+      document.addEventListener('mousedown', handler)
+      return () => document.removeEventListener('mousedown', handler)
+    }
+  }, [mobileMenuOpen])
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  const handleNavClick = item => {
+    setMobileMenuOpen(false)
+    if (item.action) {
+      item.action()
+    } else {
+      navigate(item.path)
+    }
+  }
+
   return (
-    <nav className="px-6 lg:px-12 py-4 border-b border-gray-100">
-      {/* Top row: logo + search (desktop) + buttons */}
+    <nav className="px-4 sm:px-6 lg:px-12 py-4 border-b border-gray-100">
+      {/* Top row: logo + search (desktop) + nav buttons */}
       <div className="flex items-center justify-between">
+        {/* Logo */}
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <span className="text-lg font-bold" style={{ color: '#1C1C1C' }}>
             shelf<span style={{ color: '#D4A574' }}>Track</span>
@@ -180,17 +212,69 @@ const Navbar = ({ showSearch = true }) => {
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        {/* Desktop Navigation */}
+        <div className="hidden sm:flex items-center gap-2 md:gap-3">
           {navItems.map(item => (
             <button
               key={item.label}
               onClick={() => (item.action ? item.action() : navigate(item.path))}
-              className="px-5 py-2 text-sm font-medium rounded-full transition-colors hover:bg-gray-100"
+              className="px-3 md:px-5 py-2 text-sm font-medium rounded-full transition-colors hover:bg-gray-100"
               style={{ color: '#1C1C1C' }}
             >
               {item.label}
             </button>
           ))}
+        </div>
+
+        {/* Mobile Hamburger Button */}
+        <div className="sm:hidden" ref={mobileMenuRef}>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: '#1C1C1C' }}
+            >
+              {mobileMenuOpen ? (
+                <>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </>
+              ) : (
+                <>
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </>
+              )}
+            </svg>
+          </button>
+
+          {/* Mobile Dropdown Menu */}
+          {mobileMenuOpen && (
+            <div className="absolute top-full right-4 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+              {navItems.map(item => (
+                <button
+                  key={item.label}
+                  onClick={() => handleNavClick(item)}
+                  className="w-full px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50"
+                  style={{ color: pathname === item.path ? '#8B7355' : '#1C1C1C' }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
