@@ -14,6 +14,7 @@ const pickRandom = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0,
 
 const HomePage = () => {
   const navigate = useNavigate()
+  const [heroBooks, setHeroBooks] = useState([])
   const [books, setBooks] = useState([])
   const [authors, setAuthors] = useState([])
 
@@ -22,7 +23,9 @@ const HomePage = () => {
     apiFetch('/api/books/search?q=e&limit=100')
       .then(data => {
         const allBooks = (data.books || []).map(mapBookFromAPI)
-        setBooks(pickRandom(allBooks, 8))
+        const picked = pickRandom(allBooks, 11)
+        setHeroBooks(picked.slice(0, 3))
+        setBooks(picked.slice(3))
 
         // Extract 4 random unique authors
         const uniqueAuthors = [
@@ -40,9 +43,6 @@ const HomePage = () => {
   const handleBookClick = book => {
     navigate(`/bookdetail/${getBookUrlId(book)}`, { state: { book: mapBookForNavigation(book) } })
   }
-
-  // Hero books: first 3 from the random set (or placeholders if still loading)
-  const heroBooks = books.slice(0, 3)
   const placeholderColors = ['#6BA5A5', '#E8C840', '#D4956A']
 
   // Responsive book sizes for hero section
