@@ -51,6 +51,9 @@ const SearchPage = () => {
   const [yearFrom, setYearFrom] = useState('')
   const [yearTo, setYearTo] = useState('')
 
+  // Mobile filter visibility
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
   // Initial search - uses auto source (local first, then external)
   useEffect(() => {
     if (!q.trim()) {
@@ -112,6 +115,15 @@ const SearchPage = () => {
     setYearTo('')
   }
 
+  // Count active filters
+  const activeFilterCount = [
+    selectedCategory !== 'All',
+    selectedRating !== 'All',
+    authorTags.length > 0,
+    yearFrom !== '',
+    yearTo !== '',
+  ].filter(Boolean).length
+
   const visibleBooks = books.filter(book => {
     if (authorTags.length > 0 && !authorTags.some(tag =>
       book.author.toLowerCase().includes(tag.toLowerCase()))) return false
@@ -158,10 +170,136 @@ const SearchPage = () => {
     }
   }
 
+  // Filter panel content - reused for desktop sidebar and mobile drawer
+  const FilterContent = () => (
+    <div className="space-y-5">
+      {/* Search Source */}
+      <div>
+        <div
+          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+          style={{ backgroundColor: '#8B7355' }}
+        >
+          Search Source
+        </div>
+        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
+          {[
+            { value: 'auto', label: 'Auto (Local + External)' },
+            { value: 'local', label: 'Local Only' },
+            { value: 'external', label: 'Open Library Only' },
+          ].map(option => (
+            <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="source"
+                checked={searchSource === option.value}
+                onChange={() => setSearchSource(option.value)}
+                className="w-3.5 h-3.5 accent-amber-700"
+              />
+              <span className="text-xs text-gray-600">{option.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Author */}
+      <div>
+        <div
+          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+          style={{ backgroundColor: '#8B7355' }}
+        >
+          Author
+        </div>
+        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
+          <input
+            type="text"
+            placeholder="Author's name"
+            value={authorInput}
+            onChange={e => setAuthorInput(e.target.value)}
+            onKeyDown={addAuthorTag}
+            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 mb-2"
+          />
+          {authorTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {authorTags.map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                  style={{ backgroundColor: '#F5E6D3', color: '#5C4E35' }}
+                >
+                  {tag}
+                  <button
+                    onClick={() => removeAuthorTag(tag)}
+                    className="hover:text-red-600 font-bold leading-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Year published */}
+      <div>
+        <div
+          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+          style={{ backgroundColor: '#8B7355' }}
+        >
+          Year Published
+        </div>
+        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 flex gap-2">
+          <input
+            type="number"
+            placeholder="From"
+            value={yearFrom}
+            onChange={e => setYearFrom(e.target.value)}
+            className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+            min="0"
+            max="2100"
+          />
+          <input
+            type="number"
+            placeholder="To"
+            value={yearTo}
+            onChange={e => setYearTo(e.target.value)}
+            className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
+            min="0"
+            max="2100"
+          />
+        </div>
+      </div>
+
+      {/* Rating */}
+      <div>
+        <div
+          className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
+          style={{ backgroundColor: '#8B7355' }}
+        >
+          Rating
+        </div>
+        <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
+          {RATINGS.map(r => (
+            <label key={r} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="rating"
+                checked={selectedRating === r}
+                onChange={() => setSelectedRating(r)}
+                className="w-3.5 h-3.5 accent-amber-700"
+              />
+              <span className="text-xs text-gray-600">{r}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-white">
-      <div className="flex px-6 lg:px-12 py-8 gap-8">
-        {/* ===== SIDEBAR FILTERS ===== */}
+      <div className="flex px-4 sm:px-6 lg:px-12 py-6 sm:py-8 gap-8">
+        {/* ===== SIDEBAR FILTERS (Desktop) ===== */}
         <aside className="hidden lg:block w-60 shrink-0">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold" style={{ color: '#1C1C1C' }}>
@@ -175,133 +313,61 @@ const SearchPage = () => {
               Reset All
             </button>
           </div>
-
-          <div className="space-y-5">
-            {/* Search Source */}
-            <div>
-              <div
-                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-                style={{ backgroundColor: '#8B7355' }}
-              >
-                Search Source
-              </div>
-              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
-                {[
-                  { value: 'auto', label: 'Auto (Local + External)' },
-                  { value: 'local', label: 'Local Only' },
-                  { value: 'external', label: 'Open Library Only' },
-                ].map(option => (
-                  <label key={option.value} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="source"
-                      checked={searchSource === option.value}
-                      onChange={() => setSearchSource(option.value)}
-                      className="w-3.5 h-3.5 accent-amber-700"
-                    />
-                    <span className="text-xs text-gray-600">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Author */}
-            <div>
-              <div
-                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-                style={{ backgroundColor: '#8B7355' }}
-              >
-                Author
-              </div>
-              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3">
-                <input
-                  type="text"
-                  placeholder="Author's name"
-                  value={authorInput}
-                  onChange={e => setAuthorInput(e.target.value)}
-                  onKeyDown={addAuthorTag}
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600 mb-2"
-                />
-                {authorTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {authorTags.map(tag => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
-                        style={{ backgroundColor: '#F5E6D3', color: '#5C4E35' }}
-                      >
-                        {tag}
-                        <button
-                          onClick={() => removeAuthorTag(tag)}
-                          className="hover:text-red-600 font-bold leading-none"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Year published */}
-            <div>
-              <div
-                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-                style={{ backgroundColor: '#8B7355' }}
-              >
-                Year Published
-              </div>
-              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 flex gap-2">
-                <input
-                  type="number"
-                  placeholder="From"
-                  value={yearFrom}
-                  onChange={e => setYearFrom(e.target.value)}
-                  className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
-                  min="0"
-                  max="2100"
-                />
-                <input
-                  type="number"
-                  placeholder="To"
-                  value={yearTo}
-                  onChange={e => setYearTo(e.target.value)}
-                  className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
-                  min="0"
-                  max="2100"
-                />
-              </div>
-            </div>
-
-            {/* Rating */}
-            <div>
-              <div
-                className="text-xs font-bold text-white px-3 py-2 rounded-t-lg"
-                style={{ backgroundColor: '#8B7355' }}
-              >
-                Rating
-              </div>
-              <div className="border border-t-0 border-gray-200 rounded-b-lg p-3 space-y-2">
-                {RATINGS.map(r => (
-                  <label key={r} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="rating"
-                      checked={selectedRating === r}
-                      onChange={() => setSelectedRating(r)}
-                      className="w-3.5 h-3.5 accent-amber-700"
-                    />
-                    <span className="text-xs text-gray-600">{r}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
+          <FilterContent />
         </aside>
 
         {/* ===== MAIN CONTENT ===== */}
-        <main className="flex-1">
+        <main className="flex-1 min-w-0">
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden mb-4">
+            <button
+              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm font-medium"
+              style={{ color: '#1C1C1C' }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Filters
+              {activeFilterCount > 0 && (
+                <span
+                  className="ml-1 px-2 py-0.5 rounded-full text-xs text-white"
+                  style={{ backgroundColor: '#8B7355' }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile Filters Panel */}
+          {mobileFiltersOpen && (
+            <div className="lg:hidden mb-6 p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold" style={{ color: '#1C1C1C' }}>
+                  Filter Options
+                </h2>
+                <button
+                  onClick={resetFilters}
+                  className="text-xs font-medium hover:underline"
+                  style={{ color: '#D4A574' }}
+                >
+                  Reset All
+                </button>
+              </div>
+              <FilterContent />
+            </div>
+          )}
+
           <form onSubmit={handleSearch} className="mb-6">
             <div className="flex items-center px-4 py-3 rounded-full border border-gray-200 bg-gray-50 gap-3">
               <SearchIcon />
@@ -310,7 +376,7 @@ const SearchPage = () => {
                 placeholder="Search by title or author..."
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none min-w-0"
               />
               {inputValue && (
                 <button
@@ -319,14 +385,15 @@ const SearchPage = () => {
                     setInputValue('')
                     setSearchParams({})
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                  className="text-gray-400 hover:text-gray-600 text-lg leading-none flex-shrink-0 w-8 h-8 flex items-center justify-center"
+                  aria-label="Clear search"
                 >
                   ×
                 </button>
               )}
               <button
                 type="submit"
-                className="px-4 py-1.5 rounded-full text-white text-xs font-semibold transition-all hover:brightness-110"
+                className="px-4 py-1.5 rounded-full text-white text-xs font-semibold transition-all hover:brightness-110 flex-shrink-0"
                 style={{ backgroundColor: '#8B7355' }}
               >
                 Search
@@ -336,13 +403,13 @@ const SearchPage = () => {
 
           <div className="flex items-center justify-between mb-6">
             <h1
-              className="text-2xl font-bold"
+              className="text-xl sm:text-2xl font-bold truncate mr-4"
               style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
             >
               {q ? `Results for "${q}"` : 'Books'}
             </h1>
             {visibleBooks.length > 0 && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 flex-shrink-0">
                 {visibleBooks.length} {visibleBooks.length === 1 ? 'book' : 'books'}
               </span>
             )}
@@ -383,7 +450,7 @@ const SearchPage = () => {
           )}
 
           {!loading && !error && visibleBooks.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {visibleBooks.map(book => (
                 <BookCard key={`${book.source}-${book.id}`} book={book} onClick={() => handleBookClick(book)} />
               ))}
