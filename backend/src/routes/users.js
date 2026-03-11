@@ -52,23 +52,16 @@ router.post(
       const { email, username, password, firstName, lastName, dateOfBirth } =
         req.body;
 
-      // Check for existing email
+      // Check for existing email and username
       const existingEmail = await User.findByEmail(email);
-      if (existingEmail) {
-        return res.status(409).json({
-          error: "ConflictError",
-          message: "Email already registered",
-          field: "email",
-        });
-      }
-
-      // Check for existing username
       const existingUsername = await User.findByUsername(username);
-      if (existingUsername) {
+      
+      if (existingEmail || existingUsername) {
+        // Generic error message to prevent user enumeration attacks
+        // We don't reveal whether email or username exists
         return res.status(409).json({
           error: "ConflictError",
-          message: "Username already taken",
-          field: "username",
+          message: "Registration failed. Please try different credentials.",
         });
       }
 
