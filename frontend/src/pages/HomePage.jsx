@@ -45,16 +45,23 @@ const HomePage = () => {
   const heroBooks = books.slice(0, 3)
   const placeholderColors = ['#6BA5A5', '#E8C840', '#D4956A']
 
+  // Responsive book sizes for hero section
+  const bookSizes = [
+    { mobile: { w: '100px', h: '140px' }, sm: { w: '120px', h: '165px' }, md: { w: '140px', h: '190px' }, lg: { w: '180px', h: '240px' } },
+    { mobile: { w: '110px', h: '155px' }, sm: { w: '135px', h: '185px' }, md: { w: '155px', h: '215px' }, lg: { w: '200px', h: '270px' } },
+    { mobile: { w: '100px', h: '140px' }, sm: { w: '120px', h: '165px' }, md: { w: '140px', h: '190px' }, lg: { w: '180px', h: '240px' } },
+  ]
+
   return (
     <div className="min-h-screen bg-white">
       {/* ===== HERO SECTION ===== */}
       <section className="relative overflow-hidden">
-        <div className="px-6 lg:px-12 pt-12 pb-20 lg:pb-28">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-12">
+        <div className="px-4 sm:px-6 lg:px-12 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-28">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 sm:gap-12">
             {/* Left content */}
             <div className="flex-1 max-w-lg">
               <h1
-                className="text-5xl lg:text-7xl font-bold leading-tight mb-6"
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold leading-tight mb-4 sm:mb-6"
                 style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
               >
                 What Book{' '}
@@ -62,11 +69,11 @@ const HomePage = () => {
                   Are
                 </span>
                 <br />
-                <span style={{ whiteSpace: 'nowrap' }}>
+                <span className="whitespace-nowrap">
                   You Looking For<span style={{ color: '#D4A574' }}> ?</span>
                 </span>
               </h1>
-              <p className="text-m lg:text-xl text-gray-500 mb-4 max-w-sm leading-relaxed">
+              <p className="text-base sm:text-lg lg:text-xl text-gray-500 mb-4 max-w-sm leading-relaxed">
                 Not Sure What To Read Next?
                 <br />
                 Our solution will cost you 5 minutes to find your next best.
@@ -74,7 +81,7 @@ const HomePage = () => {
               <div className="flex items-center gap-3 mt-6">
                 <button
                   onClick={() => navigate('/search')}
-                  className="px-6 py-2.5 text-sm font-medium border-2 rounded-full transition-all hover:bg-gray-50"
+                  className="px-5 sm:px-6 py-2 sm:py-2.5 text-sm font-medium border-2 rounded-full transition-all hover:bg-gray-50"
                   style={{ borderColor: '#1C1C1C', color: '#1C1C1C' }}
                 >
                   Explore Now
@@ -90,27 +97,40 @@ const HomePage = () => {
             </div>
 
             {/* Right - Book covers */}
-            <div className="flex-1 flex justify-center relative">
-              <div className="flex gap-4 items-end">
+            <div className="flex-1 flex justify-center relative w-full lg:w-auto overflow-hidden">
+              <div className="flex gap-3 sm:gap-4 items-end">
                 {[0, 1, 2].map(i => {
                   const book = heroBooks[i]
+                  const sizes = bookSizes[i]
                   return (
                     <div
                       key={i}
                       onClick={() => book && handleBookClick(book)}
-                      className="rounded-lg shadow-lg overflow-hidden cursor-pointer"
+                      className="rounded-lg shadow-lg overflow-hidden cursor-pointer transition-transform hover:scale-105"
                       style={{
-                        width: i === 1 ? '200px' : '180px',
-                        height: i === 1 ? '270px' : '240px',
+                        width: sizes.mobile.w,
+                        height: sizes.mobile.h,
                         transform: i === 0 ? 'rotate(-5deg)' : i === 2 ? 'rotate(5deg)' : 'none',
                         backgroundColor: placeholderColors[i],
                       }}
                     >
+                      {/* Responsive sizes using inline styles with media query-like approach via CSS */}
+                      <style>{`
+                        @media (min-width: 640px) {
+                          .hero-book-${i} { width: ${sizes.sm.w} !important; height: ${sizes.sm.h} !important; }
+                        }
+                        @media (min-width: 768px) {
+                          .hero-book-${i} { width: ${sizes.md.w} !important; height: ${sizes.md.h} !important; }
+                        }
+                        @media (min-width: 1024px) {
+                          .hero-book-${i} { width: ${sizes.lg.w} !important; height: ${sizes.lg.h} !important; }
+                        }
+                      `}</style>
                       {book?.coverUrl ? (
                         <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-end justify-center p-3">
-                          <p className="text-xs font-semibold text-white drop-shadow text-center">
+                        <div className="w-full h-full flex items-end justify-center p-2 sm:p-3">
+                          <p className="text-[10px] sm:text-xs font-semibold text-white drop-shadow text-center">
                             {book?.title || ''}
                           </p>
                         </div>
@@ -124,7 +144,7 @@ const HomePage = () => {
         </div>
 
         {/* Colorful gradient band */}
-        <div className="w-full h-16 flex">
+        <div className="w-full h-12 sm:h-16 flex">
           {['#E74C3C','#E67E22','#F1C40F','#2ECC71','#3498DB','#9B59B6','#E74C3C','#E67E22','#F1C40F','#2ECC71'].map((c, i) => (
             <div key={i} className="flex-1 h-full" style={{ backgroundColor: c, opacity: 0.85 }} />
           ))}
@@ -132,17 +152,17 @@ const HomePage = () => {
       </section>
 
       {/* ===== AWARD-WINNING BOOKS ===== */}
-      <section className="px-6 lg:px-12 py-16" style={{ backgroundColor: '#FAFAFA' }}>
+      <section className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="mb-6 text-center">
           <h2
-            className="text-lg font-bold mb-6"
+            className="text-base sm:text-lg font-bold mb-6"
             style={{ color: '#1C1C1C', fontFamily: "'Playfair Display', serif" }}
           >
             Explore Our Collection of Award-Winning Books
           </h2>
         </div>
         {books.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
             {books.map(book => (
               <BookCard
                 key={book.id}
@@ -156,7 +176,7 @@ const HomePage = () => {
             {[...Array(5)].map((_, i) => (
               <div
                 key={i}
-                className="shrink-0 w-28 h-40 rounded-lg bg-gray-200 animate-pulse"
+                className="shrink-0 w-24 sm:w-28 h-36 sm:h-40 rounded-lg bg-gray-200 animate-pulse"
               />
             ))}
           </div>
@@ -164,22 +184,22 @@ const HomePage = () => {
       </section>
 
       {/* ===== AUTHORS ===== */}
-      <section className="px-6 lg:px-12 py-16">
+      <section className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16">
         <h2
-          className="text-xl font-bold mb-8"
+          className="text-lg sm:text-xl font-bold mb-6 sm:mb-8"
           style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
         >
           Discover Authors You Might Love
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {authors.map((author, i) => (
             <div
               key={i}
               onClick={() => navigate(`/search?q=${encodeURIComponent(author.author)}`)}
-              className="p-6 rounded-xl cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
+              className="p-4 sm:p-6 rounded-xl cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
               style={{ backgroundColor: AUTHOR_COLORS[i % AUTHOR_COLORS.length] }}
             >
-              <h3 className="font-bold text-lg" style={{ color: '#1C1C1C' }}>
+              <h3 className="font-bold text-base sm:text-lg" style={{ color: '#1C1C1C' }}>
                 {author.author}
               </h3>
               <p className="text-xs mt-1" style={{ color: '#5C4E35' }}>
@@ -191,13 +211,13 @@ const HomePage = () => {
       </section>
 
       {/* ===== TESTIMONIAL ===== */}
-      <section className="px-6 lg:px-12 py-16 text-center" style={{ backgroundColor: '#F5F0EB' }}>
+      <section className="px-4 sm:px-6 lg:px-12 py-12 sm:py-16 text-center" style={{ backgroundColor: '#F5F0EB' }}>
         <div
-          className="w-14 h-14 rounded-full mx-auto mb-6"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full mx-auto mb-4 sm:mb-6"
           style={{ backgroundColor: '#D4A574' }}
         />
         <p
-          className="text-lg italic max-w-xl mx-auto leading-relaxed"
+          className="text-base sm:text-lg italic max-w-xl mx-auto leading-relaxed px-4"
           style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
         >
           "ShelfTrack makes tracking my reading progress and writing reviews incredibly simple and
