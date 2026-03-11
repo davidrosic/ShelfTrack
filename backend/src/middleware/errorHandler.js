@@ -65,7 +65,7 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  // Handle PostgreSQL errors
+  // Handle PostgreSQL errors - NEVER leak SQL details to client
   if (err.code) {
     // Unique constraint violation
     if (err.code === "23505") {
@@ -90,6 +90,15 @@ export function errorHandler(err, req, res, _next) {
         message: "Invalid data violates database constraints",
       });
     }
+
+    // Catch-all for any other PostgreSQL errors
+    // These could include syntax errors (42601), invalid input (22P02), etc.
+    // NEVER leak SQL details - return generic error
+    console.error(`[${timestamp}] [SQL ERROR] Code: ${err.code}, Message: ${err.message}`);
+    return res.status(400).json({
+      error: "DatabaseError",
+      message: "Invalid input or database error",
+    });
   }
 
   // JWT errors
@@ -101,14 +110,11 @@ export function errorHandler(err, req, res, _next) {
   }
 
   // Default: Internal Server Error
-  const message =
-    process.env.NODE_ENV === "production"
-      ? "An unexpected error occurred"
-      : err.message;
-
+  // SECURITY: Never leak error details (especially SQL errors) to client
+  // Log full error server-side, return generic message to client
   res.status(500).json({
     error: "InternalServerError",
-    message,
+    message: "An unexpected error occurred",
   });
 }
 
