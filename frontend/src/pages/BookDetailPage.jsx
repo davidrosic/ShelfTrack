@@ -144,7 +144,7 @@ const BookDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="px-6 lg:px-12 py-10 max-w-4xl mx-auto">
+      <main className="px-4 sm:px-6 lg:px-12 py-6 sm:py-10 max-w-4xl mx-auto">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-8 transition-colors"
@@ -165,8 +165,8 @@ const BookDetailPage = () => {
         </button>
 
         <div className="flex flex-col md:flex-row gap-8 mb-10">
-          <div className="w-full md:w-64 shrink-0">
-            <div className="aspect-3/4 rounded-xl overflow-hidden border border-gray-200 shadow-md">
+          <div className="w-full max-w-[200px] sm:max-w-[240px] md:w-64 shrink-0 mx-auto md:mx-0">
+            <div className="aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 shadow-md">
               {book.coverUrl ? (
                 <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
               ) : (
@@ -187,7 +187,7 @@ const BookDetailPage = () => {
 
           <div className="flex-1">
             <h1
-              className="text-3xl font-bold mb-2"
+              className="text-2xl sm:text-3xl font-bold mb-2"
               style={{ fontFamily: "'Playfair Display', serif", color: '#1C1C1C' }}
             >
               {book.title}
@@ -239,7 +239,7 @@ const BookDetailPage = () => {
               <h2 className="text-sm font-bold mb-2" style={{ color: '#1C1C1C' }}>
                 Your rating
               </h2>
-              <StarRating rating={userRating} size={24} interactive onChange={setUserRating} />
+              <StarRating rating={userRating} size={28} interactive onChange={setUserRating} />
             </div>
 
             <div className="mb-6">
@@ -260,7 +260,7 @@ const BookDetailPage = () => {
                     value={reviewText}
                     onChange={e => setReviewText(e.target.value)}
                     placeholder="What did you think about this book?"
-                    rows={4}
+                    rows={3}
                     className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-amber-600 resize-none transition-colors"
                   />
                 </div>
