@@ -76,6 +76,7 @@ const FilterContent = ({
         <input
           type="text"
           placeholder="Author's name"
+          aria-label="Filter by author"
           value={authorInput}
           onChange={e => setAuthorInput(e.target.value)}
           onKeyDown={addAuthorTag}
@@ -92,6 +93,7 @@ const FilterContent = ({
                 {tag}
                 <button
                   onClick={() => removeAuthorTag(tag)}
+                  aria-label={`Remove ${tag}`}
                   className="hover:text-red-600 font-bold leading-none"
                 >
                   ×
@@ -115,6 +117,7 @@ const FilterContent = ({
         <input
           type="number"
           placeholder="From"
+          aria-label="Published year from"
           value={yearFrom}
           onChange={e => setYearFrom(e.target.value)}
           className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
@@ -124,6 +127,7 @@ const FilterContent = ({
         <input
           type="number"
           placeholder="To"
+          aria-label="Published year to"
           value={yearTo}
           onChange={e => setYearTo(e.target.value)}
           className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-amber-600"
@@ -395,6 +399,7 @@ const SearchPage = () => {
               <input
                 type="text"
                 placeholder="Search by title or author..."
+                aria-label="Search books"
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none min-w-0"

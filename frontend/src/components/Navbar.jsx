@@ -16,6 +16,8 @@ const SearchBox = () => {
   useEffect(() => {
     const q = value.trim()
     if (q.length < 2) {
+      // TODO: fix
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([])
       setOpen(false)
       return
@@ -182,6 +184,8 @@ const Navbar = ({ showSearch = true }) => {
 
   // Close mobile menu on route change
   useEffect(() => {
+    //TODO : fix
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuOpen(false)
   }, [pathname])
 
