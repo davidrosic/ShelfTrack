@@ -30,13 +30,13 @@ const validateConfig = { keyGeneratorIpFallback: false };
 
 /**
  * Determine if rate limiting should be skipped
- * Skipped in development unless explicitly enabled
+ * Skipped in development or test unless explicitly enabled
  */
-function shouldSkip() {
+export function shouldSkip() {
   if (process.env.ENABLE_RATE_LIMIT === "true") {
     return false;
   }
-  return process.env.NODE_ENV === "development";
+  return process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
 }
 
 /**

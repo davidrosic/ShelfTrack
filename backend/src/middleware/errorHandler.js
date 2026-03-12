@@ -44,14 +44,15 @@ export function errorHandler(err, req, res, _next) {
   }
 
   // Handle specific error types
-  if (err instanceof ValidationError) {
+  // Check both instanceof (User model errors) and err.name (Book/UserBook model errors)
+  if (err instanceof ValidationError || err.name === 'ValidationError') {
     return res.status(err.statusCode || 400).json({
       error: "ValidationError",
       message: err.message,
     });
   }
 
-  if (err instanceof NotFoundError) {
+  if (err instanceof NotFoundError || err.name === 'NotFoundError') {
     return res.status(err.statusCode || 404).json({
       error: "NotFoundError",
       message: err.message,

@@ -33,6 +33,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { Book } from "../models/Book.js";
 import { validateBody, schemas } from "../middleware/validate.js";
+import { shouldSkip } from "../middleware/rateLimit.js";
 
 const router = Router();
 
@@ -43,9 +44,10 @@ const router = Router();
 const bookCreateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 50, // 50 books per hour per IP
+  skip: shouldSkip,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res) => {
+  handler: (_req, res) => {
     res.status(429).json({
       error: "RateLimitError",
       message: "Book creation limit exceeded. Maximum 50 books per hour."
@@ -62,8 +64,8 @@ router.post("/", bookCreateLimiter, validateBody(schemas.book.create), async (re
   try {
     const book = await Book.create(req.body);
 
-    // Determine if this was a create or update based on created_at vs updated_at
-    const isNew = book.created_at === book.updated_at;
+    // xmax = 0 for new inserts, non-zero for updates (PostgreSQL system column trick)
+    const isNew = book.inserted === true;
 
     res.status(isNew ? 201 : 200).json({
       message: isNew

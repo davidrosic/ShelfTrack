@@ -88,7 +88,7 @@ export class Book {
            cover_url = $4, 
            first_publish_year = $5,
            is_custom = $6
-       RETURNING book_id, open_library_id, title, author, cover_url, first_publish_year, is_custom, created_at`,
+       RETURNING book_id, open_library_id, title, author, cover_url, first_publish_year, is_custom, created_at, (xmax = 0) AS inserted`,
       [
         openLibraryId || null,
         title.trim(),
@@ -322,7 +322,7 @@ export class Book {
   } = {}) {
     // Source: 'local' - only search local DB
     if (source === 'local') {
-      const books = await this.search(searchTerm, { limit: localLimit });
+      const books = await this.search(searchTerm, { limit });
       return { 
         books: books.map(b => ({ ...b, source: 'local' })), 
         source: 'local',
