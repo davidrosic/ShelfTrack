@@ -153,6 +153,59 @@ describe('/api/users - User Authentication', () => {
       expect(res.body.user.first_name).toBe('John');
       expect(res.body.user.last_name).toBe('Doe');
     });
+
+    it('accepts date of birth during registration', async () => {
+      const userData = createTestUserData({
+        dateOfBirth: '1990-05-15',
+      });
+
+      const res = await request(app)
+        .post('/api/users/register')
+        .send(userData)
+        .expect(201);
+
+      expect(res.body.user.date_of_birth).toBe('1990-05-15T00:00:00.000Z');
+    });
+
+    it('accepts registration without date of birth (optional)', async () => {
+      const userData = createTestUserData();
+      // Explicitly not including dateOfBirth
+
+      const res = await request(app)
+        .post('/api/users/register')
+        .send(userData)
+        .expect(201);
+
+      // date_of_birth should be null or undefined
+      expect(res.body.user.date_of_birth).toBeNull();
+    });
+
+    it('rejects invalid date of birth format', async () => {
+      const res = await request(app)
+        .post('/api/users/register')
+        .send({
+          ...createTestUserData(),
+          dateOfBirth: 'not-a-date',
+        })
+        .expect(400);
+
+      expect(res.body.error).toBe('ValidationError');
+    });
+
+    it('rejects future date of birth', async () => {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 1);
+
+      const res = await request(app)
+        .post('/api/users/register')
+        .send({
+          ...createTestUserData(),
+          dateOfBirth: futureDate.toISOString().split('T')[0],
+        })
+        .expect(400);
+
+      expect(res.body.error).toBe('ValidationError');
+    });
   });
 
   describe('POST /api/users/login', () => {
@@ -406,6 +459,73 @@ describe('/api/users - User Authentication', () => {
         .expect(403);
 
       expect(res.body.error).toMatch(/CSRF/i);
+    });
+
+    it('updates date of birth', async () => {
+      const res = await request(app)
+        .patch('/api/users/me')
+        .set(getAuthHeaders(authToken))
+        .send({ dateOfBirth: '1995-03-20' })
+        .expect(200);
+
+      expect(res.body.user.date_of_birth).toBe('1995-03-20T00:00:00.000Z');
+    });
+
+    it('updates date of birth along with other fields', async () => {
+      const res = await request(app)
+        .patch('/api/users/me')
+        .set(getAuthHeaders(authToken))
+        .send({
+          firstName: 'John',
+          lastName: 'Doe',
+          dateOfBirth: '1988-12-25',
+        })
+        .expect(200);
+
+      expect(res.body.user.first_name).toBe('John');
+      expect(res.body.user.last_name).toBe('Doe');
+      expect(res.body.user.date_of_birth).toBe('1988-12-25T00:00:00.000Z');
+    });
+
+    it('rejects invalid date of birth format in update', async () => {
+      const res = await request(app)
+        .patch('/api/users/me')
+        .set(getAuthHeaders(authToken))
+        .send({ dateOfBirth: 'invalid-date' })
+        .expect(400);
+
+      expect(res.body.error).toBe('ValidationError');
+    });
+
+    it('rejects future date of birth in update', async () => {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 10);
+
+      const res = await request(app)
+        .patch('/api/users/me')
+        .set(getAuthHeaders(authToken))
+        .send({ dateOfBirth: futureDate.toISOString().split('T')[0] })
+        .expect(400);
+
+      expect(res.body.error).toBe('ValidationError');
+    });
+
+    it('clears date of birth when set to null', async () => {
+      // First set a date of birth
+      await request(app)
+        .patch('/api/users/me')
+        .set(getAuthHeaders(authToken))
+        .send({ dateOfBirth: '1990-01-01' })
+        .expect(200);
+
+      // Then clear it
+      const res = await request(app)
+        .patch('/api/users/me')
+        .set(getAuthHeaders(authToken))
+        .send({ dateOfBirth: null })
+        .expect(200);
+
+      expect(res.body.user.date_of_birth).toBeNull();
     });
   });
 });
