@@ -21,6 +21,8 @@ import {
   createTestUserData,
   createTestBookData,
   sqlInjectionPayloads,
+  xssPayloads,
+  massAssignmentPayloads,
   getAuthHeaders,
   csrfHeader,
 } from '../utils/test-helpers.js';
@@ -98,107 +100,144 @@ describe('Input Validation & Security', () => {
   });
 
   describe('XSS Prevention', () => {
-    it('stores but does not execute XSS in book titles', async () => {
-      const xssTitle = "<script>alert('xss')</script>";
+    it('stores but does not execute XSS payloads in book titles', async () => {
+      for (const xssPayload of xssPayloads) {
+        const res = await request(app)
+          .post('/api/books')
+          .set(csrfHeader)
+          .send(createTestBookData({ title: xssPayload }))
+          .expect(201);
 
-      const res = await request(app)
-        .post('/api/books')
-        .set(csrfHeader)
-        .send(createTestBookData({ title: xssTitle }))
-        .expect(201);
-
-      // Should store the title (sanitization happens at output)
-      expect(res.body.book.title).toBe(xssTitle);
+        // Should store the title (sanitization happens at output)
+        expect(res.body.book.title).toBe(xssPayload);
+      }
     });
 
-    it('stores but does not execute XSS in reviews', async () => {
+    it('stores but does not execute XSS payloads in reviews', async () => {
       const bookRes = await request(app)
         .post('/api/books')
         .set(csrfHeader)
         .send(createTestBookData())
         .expect(201);
 
-      const xssReview = "<img src=x onerror=alert('xss')>";
+      for (const xssPayload of xssPayloads) {
+        const res = await request(app)
+          .post('/api/user-books')
+          .set(getAuthHeaders(authToken))
+          .send({
+            bookId: bookRes.body.book.book_id,
+            review: xssPayload,
+          })
+          .expect(201);
 
-      const res = await request(app)
-        .post('/api/user-books')
-        .set(getAuthHeaders(authToken))
-        .send({
-          bookId: bookRes.body.book.book_id,
-          review: xssReview,
-        })
-        .expect(201);
-
-      // Should store the review
-      expect(res.body.entry.review).toBe(xssReview);
+        // Should store the review
+        expect(res.body.entry.review).toBe(xssPayload);
+      }
     });
 
-    it('handles XSS in user names', async () => {
-      const res = await request(app)
-        .post('/api/users/register')
-        .send({
-          ...createTestUserData(),
-          firstName: "<script>alert('xss')</script>",
-        })
+    it('stores but does not execute XSS payloads in user names', async () => {
+      for (const xssPayload of xssPayloads) {
+        const res = await request(app)
+          .post('/api/users/register')
+          .send({
+            ...createTestUserData(),
+            firstName: xssPayload,
+          })
+          .expect(201);
+
+        expect(res.body.user.first_name).toBe(xssPayload);
+      }
+    });
+
+    it('stores but does not execute XSS payloads in notes', async () => {
+      const bookRes = await request(app)
+        .post('/api/books')
+        .set(csrfHeader)
+        .send(createTestBookData())
         .expect(201);
 
-      expect(res.body.user.first_name).toBe("<script>alert('xss')</script>");
+      for (const xssPayload of xssPayloads) {
+        const res = await request(app)
+          .post('/api/user-books')
+          .set(getAuthHeaders(authToken))
+          .send({
+            bookId: bookRes.body.book.book_id,
+            notes: xssPayload,
+          })
+          .expect(201);
+
+        // Should store the notes
+        expect(res.body.entry.notes).toBe(xssPayload);
+      }
     });
   });
 
   describe('Mass Assignment Prevention', () => {
-    it('ignores role field in user registration', async () => {
+    it('ignores forbidden user fields in registration', async () => {
+      // Test all mass assignment user payload fields
       const res = await request(app)
         .post('/api/users/register')
         .send({
           ...createTestUserData(),
-          role: 'admin',
-          isAdmin: true,
+          ...massAssignmentPayloads.user,
         })
         .expect(201);
 
-      // Should not have role field
+      // Should not have mass-assigned fields
       expect(res.body.user.role).toBeUndefined();
       expect(res.body.user.isAdmin).toBeUndefined();
-    });
-
-    it('ignores user_id in user registration', async () => {
-      const res = await request(app)
-        .post('/api/users/register')
-        .send({
-          ...createTestUserData(),
-          user_id: 1,
-        })
-        .expect(201);
-
+      expect(res.body.user.password_hash).toBeUndefined();
+      
       // Should have auto-generated ID, not the provided one
-      expect(res.body.user.user_id).not.toBe(1);
+      expect(res.body.user.user_id).not.toBe(massAssignmentPayloads.user.user_id);
+      
+      // Should have auto-generated timestamp, not the provided one
+      expect(res.body.user.created_at).not.toBe(massAssignmentPayloads.user.created_at);
     });
 
-    it('ignores created_at in user registration', async () => {
+    it('ignores forbidden book fields in creation', async () => {
+      // Create a book with mass assignment payload
       const res = await request(app)
-        .post('/api/users/register')
+        .post('/api/books')
+        .set(csrfHeader)
         .send({
-          ...createTestUserData(),
-          created_at: '2020-01-01',
+          ...createTestBookData(),
+          ...massAssignmentPayloads.book,
         })
         .expect(201);
 
-      // Should have auto-generated timestamp
-      expect(res.body.user.created_at).not.toBe('2020-01-01');
+      // Should not have mass-assigned fields
+      expect(res.body.user?.book_id).toBeUndefined();
+      expect(res.body.user?.created_at).toBeUndefined();
+      
+      // Should have auto-generated ID, not the provided one
+      expect(res.body.book.book_id).not.toBe(massAssignmentPayloads.book.book_id);
+      
+      // Should have auto-generated timestamp, not the provided one  
+      expect(res.body.book.created_at).not.toBe(massAssignmentPayloads.book.created_at);
     });
 
     it('ignores password_hash in user registration', async () => {
+      // Register with password_hash
+      const userData = createTestUserData();
       await request(app)
         .post('/api/users/register')
         .send({
-          ...createTestUserData(),
+          ...userData,
           password_hash: 'hacked_hash',
         })
         .expect(201);
 
-      // The original user should be able to login with their actual password
-      // (This verifies password_hash was ignored during registration)
+      // Verify user can login with their actual password (not the hacked_hash)
+      const loginRes = await request(app)
+        .post('/api/users/login')
+        .send({
+          email: userData.email,
+          password: userData.password,
+        })
+        .expect(200);
+
+      expect(loginRes.body.token).toBeDefined();
     });
   });
 
