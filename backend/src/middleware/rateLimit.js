@@ -177,3 +177,30 @@ export const externalSearchLimiter = rateLimit({
  * Monitoring systems need consistent access
  */
 export const skipHealthCheck = (req) => req.path === "/health";
+
+/**
+ * Reset all rate limiters - useful for testing
+ * This clears the hit counts for all keys
+ */
+export function resetAllLimiters() {
+  // Get all exported limiters
+  const limiters = [
+    authLimiter,
+    refreshLimiter,
+    searchLimiter,
+    writeLimiter,
+    readLimiter,
+    externalSearchLimiter,
+  ];
+
+  // Reset all keys in each limiter
+  // Note: This only works with MemoryStore (default)
+  limiters.forEach((limiter) => {
+    if (limiter.resetKey) {
+      // Reset common test keys
+      limiter.resetKey('::ffff:127.0.0.1');
+      limiter.resetKey('127.0.0.1');
+      limiter.resetKey('::1');
+    }
+  });
+}

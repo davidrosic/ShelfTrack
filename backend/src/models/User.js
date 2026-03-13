@@ -70,6 +70,19 @@ export class User {
    * @returns {Promise<Object>} Created user (without password_hash)
    * @throws {ValidationError} If required fields are missing
    */
+  static _formatUser(user) {
+    if (!user) return user;
+    if (user.date_of_birth) {
+      // Format date as YYYY-MM-DD using local timezone to avoid UTC conversion issues
+      const d = new Date(user.date_of_birth);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      user.date_of_birth = `${year}-${month}-${day}T00:00:00.000Z`;
+    }
+    return user;
+  }
+
   static async create({
     email,
     username,
@@ -91,6 +104,13 @@ export class User {
     if (!firstName || !lastName) {
       throw new ValidationError("First name and last name are required");
     }
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      if (dob > today) {
+        throw new ValidationError("Date of birth cannot be in the future");
+      }
+    }
 
     const passwordHash = await bcrypt.hash(password, this.BCRYPT_ROUNDS);
 
@@ -101,7 +121,7 @@ export class User {
          RETURNING user_id, email, username, first_name, last_name, date_of_birth, created_at`,
         [email, username, passwordHash, firstName, lastName, dateOfBirth],
       );
-      return result.rows[0];
+      return this._formatUser(result.rows[0]);
     } catch (err) {
       // Handle unique constraint violations
       if (err.code === "23505") {
@@ -129,7 +149,7 @@ export class User {
        FROM users WHERE email = $1`,
       [email],
     );
-    return result.rows[0] || null;
+    return this._formatUser(result.rows[0]) || null;
   }
 
   /**
@@ -145,7 +165,7 @@ export class User {
        FROM users WHERE username = $1`,
       [username],
     );
-    return result.rows[0] || null;
+    return this._formatUser(result.rows[0]) || null;
   }
 
   /**
@@ -164,7 +184,7 @@ export class User {
        FROM users WHERE user_id = $1`,
       [userId],
     );
-    return result.rows[0] || null;
+    return this._formatUser(result.rows[0]) || null;
   }
 
   /**
@@ -197,21 +217,55 @@ export class User {
       throw new ValidationError("Valid user ID is required");
     }
 
+    // Validate dateOfBirth if provided (null is allowed to clear the field)
+    if (dateOfBirth !== undefined && dateOfBirth !== null) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dateOfBirth)) {
+        throw new ValidationError("Date of birth must be in YYYY-MM-DD format");
+      }
+      
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      if (dob > today) {
+        throw new ValidationError("Date of birth cannot be in the future");
+      }
+    }
+
+    // Build dynamic query to handle null properly
+    const updates = [];
+    const values = [userId];
+    let paramIndex = 2;
+
+    if (firstName !== undefined) {
+      updates.push(`first_name = $${paramIndex++}`);
+      values.push(firstName);
+    }
+    if (lastName !== undefined) {
+      updates.push(`last_name = $${paramIndex++}`);
+      values.push(lastName);
+    }
+    if (dateOfBirth !== undefined) {
+      updates.push(`date_of_birth = $${paramIndex++}`);
+      values.push(dateOfBirth);
+    }
+
+    if (updates.length === 0) {
+      throw new ValidationError("No valid fields to update");
+    }
+
     const result = await query(
       `UPDATE users
-       SET first_name = COALESCE($2, first_name),
-           last_name = COALESCE($3, last_name),
-           date_of_birth = COALESCE($4, date_of_birth)
+       SET ${updates.join(', ')}
        WHERE user_id = $1
        RETURNING user_id, email, username, first_name, last_name, date_of_birth, created_at`,
-      [userId, firstName, lastName, dateOfBirth],
+      values,
     );
 
     if (result.rows.length === 0) {
       throw new NotFoundError("User not found");
     }
 
-    return result.rows[0];
+    return this._formatUser(result.rows[0]);
   }
 }
 

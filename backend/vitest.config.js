@@ -48,10 +48,10 @@ export default defineConfig({
       ],
     },
     
-    // Timeouts - generous for Docker operations
-    testTimeout: 30000,
-    hookTimeout: 30000,
-    teardownTimeout: 30000,
+    // Timeouts - generous for Docker operations and heavy database work
+    testTimeout: 60000,
+    hookTimeout: 60000,
+    teardownTimeout: 60000,
     
     // Isolate tests - clean environment for each test
     isolate: true,

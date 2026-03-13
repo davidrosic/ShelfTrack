@@ -8,8 +8,9 @@
  * We clean the database between tests but verify state through API calls.
  */
 
-import { beforeAll, beforeEach, afterAll } from 'vitest';
+import { beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
 import pg from 'pg';
+import { resetAllLimiters } from '../src/middleware/rateLimit.js';
 
 const { Pool } = pg;
 
@@ -82,6 +83,12 @@ beforeAll(async () => {
 beforeEach(async () => {
   // Clean database before each test for isolation
   await cleanupDatabase();
+});
+
+afterEach(() => {
+  // Reset rate limiters to prevent cross-test interference
+  // This clears hit counts for local IP addresses used in tests
+  resetAllLimiters();
 });
 
 afterAll(async () => {

@@ -319,12 +319,12 @@ export const massAssignmentPayloads = {
   user: {
     role: 'admin',
     isAdmin: true,
-    user_id: 1,
+    user_id: 999999,
     password_hash: 'hacked',
     created_at: '2020-01-01',
   },
   book: {
-    book_id: 1,
+    book_id: 999999,
     created_at: '2020-01-01',
   },
 };
