@@ -13,12 +13,17 @@
  * - No mocking of internal components
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 
 describe('API Core Functionality', () => {
-  
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   describe('GET /health', () => {
     it('returns healthy status', async () => {
       const res = await request(app)

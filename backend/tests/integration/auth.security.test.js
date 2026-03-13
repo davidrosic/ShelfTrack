@@ -12,7 +12,7 @@
  * JWT best practices: https://tools.ietf.org/html/rfc8725
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import {
@@ -29,7 +29,13 @@ import {
 describe('JWT Security', () => {
   let userId;
   let validToken;
-  
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   beforeEach(async () => {
     // Create a user for testing
     const userData = createTestUserData();
@@ -235,7 +241,13 @@ describe('JWT Security', () => {
 
 describe('CSRF Protection', () => {
   let authToken;
-  
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   beforeEach(async () => {
     const userData = createTestUserData();
     

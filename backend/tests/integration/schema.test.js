@@ -13,7 +13,7 @@
  * Research: https://github.com/goldbergyoni/javascript-testing-best-practices
  */
 
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import pg from 'pg';
 
 const { Pool } = pg;
@@ -28,6 +28,12 @@ const pool = new Pool({
 });
 
 describe('Database Schema', () => {
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   afterAll(async () => {
     await pool.end();
   });

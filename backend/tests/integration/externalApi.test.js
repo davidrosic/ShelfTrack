@@ -11,13 +11,18 @@
  * external dependencies are unavailable.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import { createTestBookData, createTestUserData, getAuthHeaders, csrfHeader } from '../utils/test-helpers.js';
 
 describe('External API Error Handling', () => {
-  
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   describe('GET /api/books/search - Combined Search Resilience', () => {
     it('returns local results when Open Library API fails', async () => {
       // Create a book in local DB first

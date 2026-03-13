@@ -14,7 +14,7 @@
  * - https://github.com/goldbergyoni/javascript-testing-best-practices
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import {
@@ -29,6 +29,12 @@ import {
 
 describe('Input Validation & Security', () => {
   let authToken;
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
 
   beforeEach(async () => {
     const userData = createTestUserData();

@@ -16,7 +16,7 @@
  * Research: https://github.com/goldbergyoni/javascript-testing-best-practices
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import {
@@ -28,6 +28,11 @@ import {
 } from '../utils/test-helpers.js';
 
 describe('/api/users - User Authentication', () => {
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
 
   describe('POST /api/users/register', () => {
     it('creates a new user with valid data', async () => {
@@ -531,6 +536,12 @@ describe('/api/users - User Authentication', () => {
 });
 
 describe('/api/auth - Token Management', () => {
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   let refreshToken;
   let userData;
 

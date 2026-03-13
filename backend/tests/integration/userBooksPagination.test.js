@@ -9,7 +9,7 @@
  * - Pagination with status filtering
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import { createTestUserData, createTestBookData, getAuthHeaders, csrfHeader } from '../utils/test-helpers.js';
@@ -17,6 +17,12 @@ import { createTestUserData, createTestBookData, getAuthHeaders, csrfHeader } fr
 describe('User Books Pagination', () => {
   let authToken;
   let bookIds = [];
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
 
   beforeEach(async () => {
     // Create user and login

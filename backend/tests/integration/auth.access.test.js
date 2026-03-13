@@ -10,7 +10,7 @@
  * OWASP: https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import {
@@ -25,6 +25,12 @@ describe('Data Isolation - User Books', () => {
   let tokenA, tokenB;
   let bookId;
   let userABookEntryId;
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
 
   beforeEach(async () => {
     // Create two users
@@ -234,6 +240,12 @@ describe('Data Isolation - User Profile', () => {
   let userA, userB;
   let tokenA, tokenB;
 
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
+
   beforeEach(async () => {
     // Create two users
     const userAData = createTestUserData();
@@ -321,6 +333,12 @@ describe('Data Isolation - User Profile', () => {
 
 describe('ID Enumeration Prevention', () => {
   let token;
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
 
   beforeEach(async () => {
     const userData = createTestUserData();

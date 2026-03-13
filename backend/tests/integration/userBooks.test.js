@@ -15,7 +15,7 @@
  * - Use real authentication (not mocked)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server.js';
 import {
@@ -29,6 +29,12 @@ describe('/api/user-books - Shelf Management', () => {
   let authToken;
   let userId;
   let testBookId;
+
+  // Ensure rate limiting is disabled for these tests
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_RATE_LIMIT = 'false';
+  });
 
   beforeEach(async () => {
     // Create user and get token
